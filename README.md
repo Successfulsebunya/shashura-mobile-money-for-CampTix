@@ -113,7 +113,7 @@ What is sent, and when:
 - **Status confirmation** — after a prompt is sent, this plugin asks Shashura directly whether the referenced payment succeeded (and Shashura also notifies this plugin via a signed webhook). No card numbers, mobile money PINs, or other site data are sent.
 - These calls happen only when a buyer actually attempts a Mobile Money payment at checkout — never on a page load with no checkout activity.
 
-This service is provided by Shashura (operated by Cipherwave Software Limited): [Terms of Service](https://shashura.com/terms) · [Privacy Policy](https://shashura.com/privacy).
+This service is provided by Shashura (operated by Techdom Digital Solutions): [Terms of Service](https://shashura.com/terms) · [Privacy Policy](https://shashura.com/privacy).
 
 ## Privacy
 
