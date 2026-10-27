@@ -1,0 +1,34 @@
+/* Shashura checkout pages — number entry, confirm, waiting, receipt, and
+ * error/message screens all share this single stylesheet via render_page().
+ * The --a (accent colour) custom property is set per-request with
+ * wp_add_inline_style(), since it comes from the ctx_shashura_accent_color
+ * filter rather than being static.
+ */
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#f4f5f7;margin:0;padding:24px 16px;color:#1d2327}
+.card{max-width:420px;margin:24px auto;background:#fff;border-radius:12px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+h1{font-size:21px;margin:0 0 6px}
+.muted{color:#50575e;font-size:14px;line-height:1.5;margin:0}
+.center{text-align:center}
+.total{font-size:28px;font-weight:700;margin:16px 0 4px}
+label{display:block;font-weight:600;margin:18px 0 6px}
+input[type=tel]{width:100%;padding:12px;font-size:18px;border:1px solid #8c8f94;border-radius:8px}
+input[type=tel]:focus{outline:2px solid var(--a);outline-offset:1px}
+button,.btn{display:block;width:100%;margin-top:20px;padding:14px;font-size:16px;font-weight:600;color:#fff;background:var(--a);border:0;border-radius:8px;cursor:pointer;text-align:center;text-decoration:none}
+button:disabled{opacity:.6}
+.err{background:#fcf0f1;color:#8a2424;padding:10px 12px;border-radius:8px;margin-top:14px;font-size:14px}
+.note{background:#fcf9e8;color:#614a00;padding:10px 12px;border-radius:8px;margin-top:14px;font-size:14px}
+.fine{color:#646970;font-size:12px;margin:14px 0 0}
+a.link{display:block;text-align:center;margin-top:16px;color:#50575e;font-size:14px}
+dl.det{margin:18px 0 0;border-top:1px solid #e5e5e5;padding-top:2px}
+dl.det dt{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#646970;margin-top:12px}
+dl.det dd{margin:2px 0 0;font-size:17px;font-weight:600;word-break:break-word}
+dl.det dd.amt{font-size:20px;color:var(--a)}
+.spin{width:38px;height:38px;border:4px solid #dcdcde;border-top-color:var(--a);border-radius:50%;animation:s 1s linear infinite;margin:22px auto}
+.ok{width:56px;height:56px;border-radius:50%;background:#e6f4ea;color:#116329;font-size:32px;line-height:56px;text-align:center;margin:4px auto 12px}
+@keyframes s{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+.poweredby{max-width:420px;margin:0 auto;text-align:center;font-size:12px;color:#8c8f94}
+.poweredby a{color:inherit;font-weight:600;text-decoration:none}
+.poweredby a:hover{text-decoration:underline}
