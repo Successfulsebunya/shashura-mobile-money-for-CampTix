@@ -1213,6 +1213,12 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			return;
 		}
 
+		// settle() may have updated the attempts, so decide on the saved copy, not the one loaded above.
+		$ctx = $this->load( $token );
+		if ( ! $ctx || ! $ctx['attempts'] ) {
+			return;
+		}
+
 		// A prompt still in flight (or Shashura unreachable): hold the seats a little longer, up to a day.
 		$latest = end( $ctx['attempts'] );
 		if ( in_array( $state, array( 'pending', 'busy' ), true ) && $latest['created'] > time() - DAY_IN_SECONDS && method_exists( $camptix, 'set_order_session_expiry' ) ) {
