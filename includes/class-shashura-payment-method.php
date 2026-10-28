@@ -268,7 +268,14 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		}
 		if ( isset( $input['base_url'] ) ) {
 			$base_url = untrailingslashit( trim( (string) $input['base_url'] ) );
-			$output['base_url'] = '' !== $base_url ? esc_url_raw( $base_url ) : '';
+			if ( '' === $base_url ) {
+				$output['base_url'] = '';
+			} elseif ( Shasmomo_API::is_allowed_base_url( $base_url ) ) {
+				$output['base_url'] = esc_url_raw( $base_url );
+			} else {
+				// The API client would silently fall back to the default URL, so say so now.
+				add_settings_error( 'camptix_options', 'shasmomo_base_url', __( 'The API Base URL must start with https://. The previous value was kept.', 'shashura-mobile-money-for-camptix' ) );
+			}
 		}
 		if ( isset( $input['name_display'] ) ) {
 			$output['name_display'] = 'partial' === $input['name_display'] ? 'partial' : 'full';
@@ -283,8 +290,17 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		// turns on if the admin explicitly ticked it on this save.
 		$output['show_branding'] = ! empty( $input['show_branding'] );
 
-		// Test the credentials on save so the admin sees a problem now, not at the first sale.
-		if ( '' !== $output['client_id'] && '' !== $output['client_secret'] ) {
+		// Test the credentials when they change (or the last test failed), so the admin sees a
+		// problem now, not at the first sale, without a slow API call on every unrelated save.
+		$changed = false;
+		foreach ( array( 'client_id', 'client_secret', 'environment', 'base_url' ) as $key ) {
+			if ( (string) $this->options[ $key ] !== (string) $output[ $key ] ) {
+				$changed = true;
+			}
+		}
+		if ( '' === $output['client_id'] || '' === $output['client_secret'] ) {
+			$output['last_check'] = '';
+		} elseif ( $changed || empty( $output['last_check']['ok'] ) ) {
 			$api    = new Shasmomo_API( $output['client_id'], $output['client_secret'], $output['environment'], '', $output['base_url'] );
 			$result = $api->test_credentials();
 			$output['last_check'] = array(
