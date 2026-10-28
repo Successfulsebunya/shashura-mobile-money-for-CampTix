@@ -41,6 +41,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	const MAX_ATTEMPTS       = 5;           // PIN prompts per order.
 	const MAX_LOOKUPS        = 8;           // KYC lookups per order.
 	const LOOKUPS_PER_IP     = 20;          // KYC lookups per IP per hour.
+	const LOOKUPS_PER_NUMBER = 3;           // KYC lookups per phone number per hour, across all orders.
 	const LOOKUPS_ALERT      = 300;         // KYC lookups per site per hour that trigger an admin alert (never blocks).
 	const RETRY_AFTER        = 150;         // Seconds before a new prompt may replace an unanswered one.
 	const CONFIRM_TTL        = 900;         // Seconds a verified number stays valid for confirmation.
@@ -75,7 +76,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			'environment'    => 'sandbox',
 			'webhook_secret' => '',
 			'base_url'       => '',
-			'name_display'   => 'full',
+			'name_display'   => 'partial',
 			'ip_source'      => 'remote_addr',
 			// Off by default: a "Powered by Shashura" credit link must never
 			// appear on a buyer-facing page without the site administrator
@@ -781,7 +782,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		}
 
 		// KYC reveals a subscriber's registered name, so it must not become a lookup service.
-		if ( $ctx['lookups'] >= self::MAX_LOOKUPS || ! $this->ip_allowance() ) {
+		if ( $ctx['lookups'] >= self::MAX_LOOKUPS || ! $this->ip_allowance() || ! $this->number_allowance( $msisdn ) ) {
 			$this->render_phone( $ctx, __( 'Too many number checks. Please wait a while and try again.', 'shashura-mobile-money-for-camptix' ) );
 		}
 		$this->save( $ctx, '_shashura_lookups', $ctx['lookups'] + 1 );
@@ -926,6 +927,21 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			$ip = $remote;
 		}
 		return (string) apply_filters( 'shasmomo_client_ip', $ip );
+	}
+
+	/**
+	 * Counts a KYC lookup against the per-number hourly budget. The per-IP limit alone can be
+	 * spread over many IPs; this stops the same number being looked up again and again.
+	 * The number is hashed with a salt so it isn't readable in the options table.
+	 */
+	private function number_allowance( $msisdn ) {
+		$key = 'shasmomo_kycn_' . md5( wp_salt( 'nonce' ) . $msisdn . '|' . gmdate( 'YmdH' ) );
+		$n   = (int) get_transient( $key );
+		if ( $n >= (int) apply_filters( 'shasmomo_lookups_per_number', self::LOOKUPS_PER_NUMBER ) ) {
+			return false;
+		}
+		set_transient( $key, $n + 1, HOUR_IN_SECONDS );
+		return true;
 	}
 
 	/**
