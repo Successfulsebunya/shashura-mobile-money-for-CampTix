@@ -117,7 +117,9 @@ This service is provided by Shashura (operated by Techdom Digital Solutions): [T
 
 ## Privacy
 
-Against each paid order, this plugin stores the payer's registered name, a masked mobile number, the mobile network, and the Shashura transaction reference, for reconciliation and support. Full, unmasked phone numbers and names are included in WordPress's own **Tools → Export Personal Data** and **Erase Personal Data** tools, so data-subject requests are handled through core WordPress, not a separate process. This plugin never handles or stores card numbers, mobile money PINs, or Shashura account credentials.
+While a payment request is open, the plugin keeps the buyer's full mobile number. Once the request is settled (paid, failed or rejected), only a masked number (+256 77* *** 456) is kept.
+
+Against each paid order, this plugin stores the payer's registered name, a masked mobile number, the mobile network, and the Shashura transaction reference, for reconciliation and support. Stored phone numbers and names are included in WordPress's own **Tools → Export Personal Data** and **Erase Personal Data** tools, so data-subject requests are handled through core WordPress, not a separate process. This plugin never handles or stores card numbers, mobile money PINs, or Shashura account credentials.
 
 ## Developer filters
 

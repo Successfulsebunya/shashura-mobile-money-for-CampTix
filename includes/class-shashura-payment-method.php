@@ -383,6 +383,23 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		return $ids ? (string) get_post_meta( $ids[0], 'tix_payment_token', true ) : '';
 	}
 
+	/** Masked number for an attempt, whether or not the full number is still stored. */
+	private function masked( $a ) {
+		if ( ! empty( $a['msisdn'] ) ) {
+			return Shasmomo_Phone::mask( $a['msisdn'] );
+		}
+		return isset( $a['msisdn_masked'] ) ? (string) $a['msisdn_masked'] : '';
+	}
+
+	/** Once an attempt is final the full number is no longer needed: keep only the masked one. */
+	private function redact( $a ) {
+		if ( ! empty( $a['msisdn'] ) ) {
+			$a['msisdn_masked'] = Shasmomo_Phone::mask( $a['msisdn'] );
+			$a['msisdn']        = '';
+		}
+		return $a;
+	}
+
 	/* ==================================================================
 	 * Lock: one settlement per order at a time (webhook vs. browser vs. sweep)
 	 * ================================================================ */
@@ -510,6 +527,9 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 				}
 			}
 
+			if ( in_array( $a['status'], self::FINAL_STATES, true ) ) {
+				$a = $this->redact( $a );
+			}
 			$attempts[ $i ] = $a;
 			$changed        = true;
 		}
@@ -614,7 +634,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 					'network_ref'        => isset( $p['network_ref'] ) ? $p['network_ref'] : '',
 					'network'            => $p['network'],
 					'payer_name'         => $p['name'],
-					'payer_number'       => Shasmomo_Phone::mask( $p['msisdn'] ),
+					'payer_number'       => $this->masked( $p ),
 					'amount'             => $p['paid_amount'],
 					'duplicate_payments' => count( $rec['paid'] ) > 1 ? wp_list_pluck( array_slice( $rec['paid'], 1 ), 'ref' ) : array(),
 				),
@@ -885,6 +905,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			if ( $http >= 400 && $http < 500 ) {
 				// Definitely not pushed.
 				$attempts[ $i ]['status'] = 'rejected';
+				$attempts[ $i ]           = $this->redact( $attempts[ $i ] );
 				$this->save( $ctx, '_shashura_attempts', $attempts );
 				$this->unlock( $lock );
 
@@ -1009,7 +1030,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			if ( $paid ) {
 				$out['details'] = array(
 					'name'      => $this->display_name( $paid[0]['name'] ),
-					'phone'     => Shasmomo_Phone::mask( $paid[0]['msisdn'] ),
+					'phone'     => $this->masked( $paid[0] ),
 					'network'   => 'AIRTEL' === $paid[0]['network'] ? 'Airtel' : 'MTN',
 					'amount'    => 'UGX ' . number_format_i18n( $paid[0]['paid_amount'] ),
 					'reference' => $paid[0]['tid'] ? $paid[0]['tid'] : $paid[0]['ref'],
@@ -1236,7 +1257,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 					'data'        => array(
 						array( 'name' => 'Reference', 'value' => $a['ref'] ),
 						array( 'name' => 'Date', 'value' => gmdate( 'Y-m-d H:i', (int) $a['created'] ) . ' UTC' ),
-						array( 'name' => 'Mobile number', 'value' => $a['msisdn'] ),
+						array( 'name' => 'Mobile number', 'value' => ! empty( $a['msisdn'] ) ? $a['msisdn'] : $this->masked( $a ) ),
 						array( 'name' => 'Registered name', 'value' => $a['name'] ),
 						array( 'name' => 'Network', 'value' => $a['network'] ),
 						array( 'name' => 'Amount (UGX)', 'value' => (string) $a['amount'] ),
@@ -1255,8 +1276,9 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		foreach ( $ids as $id ) {
 			$attempts = get_post_meta( $id, '_shashura_attempts', true );
 			foreach ( is_array( $attempts ) ? $attempts : array() as $i => $a ) {
-				$attempts[ $i ]['msisdn'] = '256000000000';
-				$attempts[ $i ]['name']   = '';
+				$attempts[ $i ]['msisdn']        = '';
+				$attempts[ $i ]['msisdn_masked'] = '';
+				$attempts[ $i ]['name']          = '';
 			}
 			update_post_meta( $id, '_shashura_attempts', wp_slash( $attempts ) );
 			delete_post_meta( $id, '_shashura_pending' );
@@ -1360,7 +1382,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 					/* translators: 1: network, 2: masked number, 3: amount */
 					esc_html__( 'We sent a %1$s request to %2$s for %3$s. Enter your PIN on your phone to approve it.', 'shashura-mobile-money-for-camptix' ),
 					esc_html( 'AIRTEL' === $a['network'] ? 'Airtel Money' : 'MTN Mobile Money' ),
-					'<strong>' . esc_html( Shasmomo_Phone::mask( $a['msisdn'] ) ) . '</strong>',
+					'<strong>' . esc_html( $this->masked( $a ) ) . '</strong>',
 					'<strong>' . esc_html( 'UGX ' . number_format_i18n( $a['amount'] ) ) . '</strong>'
 				);
 			?></p>
