@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-class CTX_Shashura_API {
+class Shasmomo_API {
 
 	const BASE_URL = 'https://shashura.com/api/v1';
 
@@ -36,10 +36,10 @@ class CTX_Shashura_API {
 
 	public function __construct( $client_id, $client_secret, $environment, $webhook_secret = '', $base_url_override = '' ) {
 		$base = '' !== trim( (string) $base_url_override ) ? trim( (string) $base_url_override ) : self::BASE_URL;
-		$base = (string) apply_filters( 'ctx_shashura_base_url', $base );
+		$base = (string) apply_filters( 'shasmomo_base_url', $base );
 		// Credentials and bearer tokens must never travel over plain HTTP, except to a local/loopback
 		// host (used to point the plugin at a dev gateway instance running on the same machine).
-		if ( 0 !== strpos( $base, 'https://' ) && ! self::is_local_http( $base ) && ! apply_filters( 'ctx_shashura_allow_insecure_base_url', false ) ) {
+		if ( 0 !== strpos( $base, 'https://' ) && ! self::is_local_http( $base ) && ! apply_filters( 'shasmomo_allow_insecure_base_url', false ) ) {
 			$base = self::BASE_URL;
 		}
 
@@ -157,7 +157,7 @@ class CTX_Shashura_API {
 
 	private function token_key() {
 		// Tied to the secret and environment, so changing either invalidates the cached token.
-		return 'ctx_shashura_tok_' . md5( $this->client_id . '|' . $this->client_secret . '|' . $this->environment );
+		return 'shasmomo_tok_' . md5( $this->client_id . '|' . $this->client_secret . '|' . $this->environment );
 	}
 
 	private function token( $force = false ) {
@@ -223,7 +223,7 @@ class CTX_Shashura_API {
 	private function send( $method, $path, $body, $headers ) {
 		$args = array(
 			'method'      => $method,
-			'timeout'     => (int) apply_filters( 'ctx_shashura_http_timeout', 25 ),
+			'timeout'     => (int) apply_filters( 'shasmomo_http_timeout', 25 ),
 			'redirection' => 0,
 			'sslverify'   => true,
 			'headers'     => array_merge( array(

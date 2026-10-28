@@ -2,11 +2,12 @@
 /**
  * Plugin Name:       Shashura Mobile Money for CampTix
  * Description:       Accept MTN and Airtel Mobile Money (Uganda) in CampTix through the Shashura gateway.
- * Version:           1.0.1
+ * Version:           1.0.2
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Cipherwave Software Limited
- * License:           GPL-2.0-or-later
+ * License:           GPLv2 or later
+ * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       shashura-mobile-money-for-camptix
  *
  * @package CampTix_Shashura
@@ -14,12 +15,12 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CTX_SHASHURA_VERSION', '1.0.1' );
-define( 'CTX_SHASHURA_DIR', plugin_dir_path( __FILE__ ) );
-define( 'CTX_SHASHURA_URL', plugin_dir_url( __FILE__ ) );
+define( 'SHASMOMO_VERSION', '1.0.2' );
+define( 'SHASMOMO_DIR', plugin_dir_path( __FILE__ ) );
+define( 'SHASMOMO_URL', plugin_dir_url( __FILE__ ) );
 
-require_once CTX_SHASHURA_DIR . 'includes/class-shashura-api.php';
-require_once CTX_SHASHURA_DIR . 'includes/class-shashura-phone.php';
+require_once SHASMOMO_DIR . 'includes/class-shashura-api.php';
+require_once SHASMOMO_DIR . 'includes/class-shashura-phone.php';
 
 /**
  * CampTix fires camptix_load_addons on init (priority 8). The payment method extends a
@@ -29,7 +30,7 @@ add_action( 'camptix_load_addons', function () {
 	if ( ! class_exists( 'CampTix_Payment_Method' ) || ! function_exists( 'camptix_register_addon' ) ) {
 		return;
 	}
-	require_once CTX_SHASHURA_DIR . 'includes/class-shashura-payment-method.php';
+	require_once SHASMOMO_DIR . 'includes/class-shashura-payment-method.php';
 	camptix_register_addon( 'CampTix_Payment_Method_Shashura' );
 } );
 

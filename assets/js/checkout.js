@@ -1,6 +1,6 @@
 /* Shashura checkout pages (render_page in class-shashura-payment-method.php).
  * Runs on every screen; the waiting-page poller below only activates when
- * wp_localize_script() has supplied window.ctxShashuraWait (render_wait()
+ * wp_localize_script() has supplied window.shasmomoWait (render_wait()
  * only).
  */
 document.querySelectorAll( 'form' ).forEach( function ( f ) {
@@ -12,9 +12,9 @@ document.querySelectorAll( 'form' ).forEach( function ( f ) {
 	} );
 } );
 
-if ( window.ctxShashuraWait ) {
+if ( window.shasmomoWait ) {
 	( function () {
-		var cfg = window.ctxShashuraWait;
+		var cfg = window.shasmomoWait;
 		var statusUrl = cfg.statusUrl;
 		var labels = cfg.labels;
 		var started = Date.now(), slowShown = false;

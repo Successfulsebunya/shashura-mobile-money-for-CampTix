@@ -17,20 +17,20 @@ The plugin connects CampTix to the Shashura Mobile Money API and handles the ful
 1. The buyer selects Mobile Money at checkout and enters their MTN or Airtel number.
 2. The number is verified against the network before anything is charged, and the registered account name is shown to the buyer for confirmation.
 3. A PIN prompt is pushed to the buyer's phone for the exact order total.
-4. The plugin confirms the payment with Shashura directly rather than trusting the browser or an incoming webhook on their own. Both only trigger a check — only a status enquiry whose reference and amount match the order can mark it paid.
+4. The plugin confirms the payment with Shashura directly rather than trusting the browser or an incoming webhook on their own. Both only trigger a check; only a status enquiry whose reference and amount match the order can mark it paid.
 5. Once confirmed, the buyer is taken to their CampTix ticket page and receives CampTix's standard confirmation email.
 
 ## Screenshots
 
-**Payment configuration** — Tickets → Setup → Payment: credentials, environment selection, and live connection status.
+**Payment configuration**: Tickets → Setup → Payment: credentials, environment selection, and live connection status.
 
 ![Payment configuration screen](screenshot-1.png)
 
-**Buyer-facing checkout flow** — from entering a mobile number through to the CampTix ticket page, including the KYC-rejection state for an unregistered number.
+**Buyer-facing checkout flow**: from entering a mobile number through to the CampTix ticket page, including the KYC-rejection state for an unregistered number.
 
 ![Checkout flow](screenshot-2.png)
 
-**"Powered by Shashura" footer**, shown here on the PIN-approval step, carried on every buyer-facing screen.
+**Optional "Powered by Shashura" footer**, shown here on the PIN-approval step. Off by default; the site administrator can turn it on from the payment settings.
 
 ![PIN-approval step with Shashura footer](screenshot-3.png)
 
@@ -72,15 +72,15 @@ This plugin needs three values from your Shashura merchant account: a **Client I
 1. Log in to your Shashura merchant dashboard at [shashura.com](https://shashura.com) and open the **Apps** page. If you don't have an account yet, sign up there first.
 2. Click **Create App** and give it a name, such as your event site's name. Shashura generates a Sandbox credential pair and a Production credential pair for the app at the same time, along with a Webhook Signing Secret, so there's no separate step to request production access later.
 3. The Apps page lists each Client ID against its environment:
-   - Client ID — **SANDBOX** begins with `TID_`. Use this, with its matching Client Secret, while Environment is set to Sandbox in this plugin.
-   - Client ID — **PRODUCTION** begins with `PID_`. Use this, with its matching Client Secret, once Environment is switched to Production.
-   - Client Secret is hidden by default. Use the reveal icon to display it on screen, or the regenerate icon to issue a new one — regenerating immediately invalidates the previous secret, so update this plugin's settings straight after.
+   - Client ID: **SANDBOX** begins with `TID_`. Use this, with its matching Client Secret, while Environment is set to Sandbox in this plugin.
+   - Client ID: **PRODUCTION** begins with `PID_`. Use this, with its matching Client Secret, once Environment is switched to Production.
+   - Client Secret is hidden by default. Use the reveal icon to display it on screen, or the regenerate icon to issue a new one. Regenerating immediately invalidates the previous secret, so update this plugin's settings straight after.
 4. Copy the Client ID and Client Secret for the environment you're configuring into this plugin's Payment settings.
 5. Reveal the **Webhook Signing Secret** (begins with `whsec_`) on the same Apps page and copy it into this plugin's Webhook Secret field.
 6. Copy the webhook URL this plugin displays under its Webhook Secret field and paste it into the **Callback URL** field for the same app on the Apps page.
 7. Ask Shashura to whitelist your server's outbound IP address for this app, so callbacks and settlement checks are accepted.
 
-Because each app holds both a Sandbox and a Production credential pair, going live does not require creating a new app — only switching this plugin's Environment setting to Production and swapping in the Production Client ID and Secret from the same Apps page.
+Because each app holds both a Sandbox and a Production credential pair, going live does not require creating a new app; only switching this plugin's Environment setting to Production and swapping in the Production Client ID and Secret from the same Apps page.
 
 ## FAQ
 
@@ -104,14 +104,14 @@ Yes. The API Base URL field under the payment settings accepts a full base URL, 
 
 ## External services
 
-This plugin connects to the **Shashura Mobile Money API** to collect ticket payments. This is required functionality — without it, the plugin cannot verify mobile numbers, push PIN prompts, or confirm payment, since Mobile Money collection can only happen through a licensed Mobile Money aggregator.
+This plugin connects to the **Shashura Mobile Money API** to collect ticket payments. This is required functionality: without it, the plugin cannot verify mobile numbers, push PIN prompts, or confirm payment, since Mobile Money collection can only happen through a licensed Mobile Money aggregator.
 
 What is sent, and when:
 
-- **Number verification** — when a buyer enters a mobile number at checkout, that number is sent to Shashura to look up the registered account name on the MTN/Airtel network, shown to the buyer for confirmation before anything is charged.
-- **Payment request** — once the buyer confirms, the mobile number, the order total, and an order reference are sent to Shashura to push a PIN prompt to the buyer's phone.
-- **Status confirmation** — after a prompt is sent, this plugin asks Shashura directly whether the referenced payment succeeded (and Shashura also notifies this plugin via a signed webhook). No card numbers, mobile money PINs, or other site data are sent.
-- These calls happen only when a buyer actually attempts a Mobile Money payment at checkout — never on a page load with no checkout activity.
+- **Number verification**: when a buyer enters a mobile number at checkout, that number is sent to Shashura to look up the registered account name on the MTN/Airtel network, shown to the buyer for confirmation before anything is charged.
+- **Payment request**: once the buyer confirms, the mobile number, the order total, and an order reference are sent to Shashura to push a PIN prompt to the buyer's phone.
+- **Status confirmation**: after a prompt is sent, this plugin asks Shashura directly whether the referenced payment succeeded (and Shashura also notifies this plugin via a signed webhook). No card numbers, mobile money PINs, or other site data are sent.
+- These calls happen only when a buyer actually attempts a Mobile Money payment at checkout, never on a page load with no checkout activity.
 
 This service is provided by Shashura (operated by Techdom Digital Solutions): [Terms of Service](https://shashura.com/terms) · [Privacy Policy](https://shashura.com/privacy).
 
@@ -123,12 +123,12 @@ Against each paid order, this plugin stores the payer's registered name, a maske
 
 | Filter | Default | Description |
 |---|---|---|
-| `ctx_shashura_lookups_per_ip` | `20` | Number verification checks allowed per visitor IP per hour. |
-| `ctx_shashura_lookups_alert` | `300` | Site-wide number verification checks per hour that trigger an admin email. |
-| `ctx_shashura_client_ip` | — | Overrides the IP address used for rate limiting. |
-| `ctx_shashura_accent_color` | `#1d4ed8` | Accent colour used on the payment pages. |
-| `ctx_shashura_http_timeout` | `25` | Timeout, in seconds, for calls to the Shashura API. |
-| `ctx_shashura_base_url` | `https://shashura.com/api/v1` | Overrides the API base URL on top of the settings field. HTTPS is enforced except for local or loopback addresses. |
+| `shasmomo_lookups_per_ip` | `20` | Number verification checks allowed per visitor IP per hour. |
+| `shasmomo_lookups_alert` | `300` | Site-wide number verification checks per hour that trigger an admin email. |
+| `shasmomo_client_ip` | n/a | Overrides the IP address used for rate limiting. |
+| `shasmomo_accent_color` | `#1d4ed8` | Accent colour used on the payment pages. |
+| `shasmomo_http_timeout` | `25` | Timeout, in seconds, for calls to the Shashura API. |
+| `shasmomo_base_url` | `https://shashura.com/api/v1` | Overrides the API base URL on top of the settings field. HTTPS is enforced except for local or loopback addresses. |
 
 ## Support
 
@@ -140,4 +140,4 @@ Developed and maintained by [Cipherwave Software Limited](https://shashura.com).
 
 ## License
 
-GPLv2 or later — see [LICENSE](https://www.gnu.org/licenses/gpl-2.0.html).
+GPLv2 or later. See [LICENSE](https://www.gnu.org/licenses/gpl-2.0.html).

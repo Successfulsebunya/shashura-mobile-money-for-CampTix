@@ -7,7 +7,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-class CTX_Shashura_Phone {
+class Shasmomo_Phone {
 
 	/**
 	 * Normalize to MSISDN digits (2567XXXXXXXX). Returns '' if it is not a UG mobile number.

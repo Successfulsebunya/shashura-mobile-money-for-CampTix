@@ -77,6 +77,10 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			'base_url'       => '',
 			'name_display'   => 'full',
 			'ip_source'      => 'remote_addr',
+			// Off by default: a "Powered by Shashura" credit link must never
+			// appear on a buyer-facing page without the site administrator
+			// explicitly opting in (WordPress.org Plugin Directory guidelines).
+			'show_branding'  => false,
 			'last_check'     => '',
 		), $this->get_payment_options() );
 
@@ -97,7 +101,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	}
 
 	private function api() {
-		return new CTX_Shashura_API(
+		return new Shasmomo_API(
 			$this->options['client_id'],
 			$this->options['client_secret'],
 			$this->options['environment'],
@@ -126,7 +130,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			sprintf(
 				/* translators: %s: default API base URL */
 				__( 'Leave blank to use the default, %s. Only change this to point the plugin at a different gateway instance (e.g. a sandbox or local dev deployment).', 'shashura-mobile-money-for-camptix' ),
-				'<code>' . esc_html( CTX_Shashura_API::BASE_URL ) . '</code>'
+				'<code>' . esc_html( Shasmomo_API::BASE_URL ) . '</code>'
 			) );
 
 		$this->add_settings_field_helper( 'environment', __( 'Environment', 'shashura-mobile-money-for-camptix' ), array( $this, 'field_environment' ),
@@ -144,6 +148,9 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 
 		$this->add_settings_field_helper( 'ip_source', __( 'Visitor IP from', 'shashura-mobile-money-for-camptix' ), array( $this, 'field_ip_source' ),
 			__( 'Used to rate-limit number checks. Choose a proxy header only if your site really sits behind that proxy: visitors can fake these headers otherwise.', 'shashura-mobile-money-for-camptix' ) );
+
+		$this->add_settings_field_helper( 'show_branding', __( 'Show "Powered by Shashura"', 'shashura-mobile-money-for-camptix' ), array( $this, 'field_show_branding' ),
+			__( 'Off by default. Turning this on adds a small "Powered by Shashura" credit link to the buyer-facing payment pages.', 'shashura-mobile-money-for-camptix' ) );
 
 		$this->add_settings_field_helper( 'last_check', __( 'Connection', 'shashura-mobile-money-for-camptix' ), array( $this, 'field_status' ) );
 	}
@@ -197,6 +204,16 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		$this->field_description( $args );
 	}
 
+	public function field_show_branding( $args ) {
+		printf(
+			'<label><input type="checkbox" name="%s" value="1"%s /> %s</label>',
+			esc_attr( $args['name'] ),
+			checked( ! empty( $args['value'] ), true, false ),
+			esc_html__( 'Show the credit link', 'shashura-mobile-money-for-camptix' )
+		);
+		$this->field_description( $args );
+	}
+
 	public function field_status( $args ) {
 		if ( '' === $this->options['webhook_secret'] ) {
 			echo '<p style="color:#d63638;margin:0 0 6px">&#9888; ' . esc_html__( 'Add the Webhook Secret. Mobile Money is not offered at checkout until it is set.', 'shashura-mobile-money-for-camptix' ) . '</p>';
@@ -245,10 +262,13 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		if ( isset( $input['ip_source'] ) ) {
 			$output['ip_source'] = in_array( $input['ip_source'], array( 'remote_addr', 'cloudflare', 'x_real_ip', 'x_forwarded_for' ), true ) ? $input['ip_source'] : 'remote_addr';
 		}
+		// Checkbox: absent from $input entirely when unchecked, so this only
+		// turns on if the admin explicitly ticked it on this save.
+		$output['show_branding'] = ! empty( $input['show_branding'] );
 
 		// Test the credentials on save so the admin sees a problem now, not at the first sale.
 		if ( '' !== $output['client_id'] && '' !== $output['client_secret'] ) {
-			$api    = new CTX_Shashura_API( $output['client_id'], $output['client_secret'], $output['environment'], '', $output['base_url'] );
+			$api    = new Shasmomo_API( $output['client_id'], $output['client_secret'], $output['environment'], '', $output['base_url'] );
 			$result = $api->test_credentials();
 			$output['last_check'] = array(
 				'at'  => time(),
@@ -260,7 +280,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	}
 
 	private function admin_error_text( WP_Error $e ) {
-		$code = CTX_Shashura_API::error_code( $e );
+		$code = Shasmomo_API::error_code( $e );
 		$map  = array(
 			'INVALID_SECRET'     => __( 'Client Secret is wrong for this environment.', 'shashura-mobile-money-for-camptix' ),
 			'INVALID_APP'        => __( 'No Shashura app matches this Client ID and environment.', 'shashura-mobile-money-for-camptix' ),
@@ -375,7 +395,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	 */
 	private function lock( $token ) {
 		global $wpdb;
-		$name = 'ctx_shashura_lock_' . md5( $token );
+		$name = 'shasmomo_lock_' . md5( $token );
 
 		// Direct queries are required for the whole function: the lock is a race-free
 		// "insert if absent" primitive (INSERT IGNORE / affected-rows check), which
@@ -457,7 +477,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			if ( is_wp_error( $r ) ) {
 				// Shashura doesn't know this reference (yet). Show it as failed so the buyer can
 				// retry, but keep asking: an outage or delay must not lose a real payment.
-				if ( 404 === CTX_Shashura_API::http_status( $r ) && $now - $a['created'] > self::UNKNOWN_FAIL_AFTER ) {
+				if ( 404 === Shasmomo_API::http_status( $r ) && $now - $a['created'] > self::UNKNOWN_FAIL_AFTER ) {
 					$a['status'] = 'lost';
 				}
 				$camptix->log( 'Shashura enquiry error for ' . $a['ref'] . ': ' . $r->get_error_message(), $ctx['first'], null, 'payment' );
@@ -594,7 +614,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 					'network_ref'        => isset( $p['network_ref'] ) ? $p['network_ref'] : '',
 					'network'            => $p['network'],
 					'payer_name'         => $p['name'],
-					'payer_number'       => CTX_Shashura_Phone::mask( $p['msisdn'] ),
+					'payer_number'       => Shasmomo_Phone::mask( $p['msisdn'] ),
 					'amount'             => $p['paid_amount'],
 					'duplicate_payments' => count( $rec['paid'] ) > 1 ? wp_list_pluck( array_slice( $rec['paid'], 1 ), 'ref' ) : array(),
 				),
@@ -737,7 +757,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			$this->render_phone( $ctx, '', $notice );
 		}
 
-		if ( ! isset( $_POST['_ctxnonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_POST['_ctxnonce'] ) ), 'ctx_shashura_' . $ctx['token'] ) ) {
+		if ( ! isset( $_POST['_shasmomo_nonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_POST['_shasmomo_nonce'] ) ), 'shasmomo_' . $ctx['token'] ) ) {
 			$this->render_phone( $ctx, __( 'Your session expired. Please try again.', 'shashura-mobile-money-for-camptix' ) );
 		}
 
@@ -752,7 +772,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		global $camptix;
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified by the caller, handle_pay(), before step_lookup() is reached.
-		$msisdn = CTX_Shashura_Phone::normalize( isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '' );
+		$msisdn = Shasmomo_Phone::normalize( isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '' );
 		if ( '' === $msisdn ) {
 			$this->render_phone( $ctx, __( 'Enter a valid MTN or Airtel Uganda number, e.g. 0772 123 456.', 'shashura-mobile-money-for-camptix' ) );
 		}
@@ -768,8 +788,8 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 
 		$kyc = $this->api()->kyc( $msisdn );
 		if ( is_wp_error( $kyc ) ) {
-			$http = CTX_Shashura_API::http_status( $kyc );
-			$camptix->log( 'Shashura KYC failed: ' . $kyc->get_error_message(), $ctx['first'], array( 'code' => CTX_Shashura_API::error_code( $kyc ), 'http' => $http ), 'payment' );
+			$http = Shasmomo_API::http_status( $kyc );
+			$camptix->log( 'Shashura KYC failed: ' . $kyc->get_error_message(), $ctx['first'], array( 'code' => Shasmomo_API::error_code( $kyc ), 'http' => $http ), 'payment' );
 			$msg = ( $http >= 400 && $http < 500 && 401 !== $http ) || 'shashura_kyc_empty' === $kyc->get_error_code()
 				? __( 'This number is not a registered MTN or Airtel Mobile Money account. Check it and try again.', 'shashura-mobile-money-for-camptix' )
 				: __( 'We could not reach the mobile money service. Please try again in a moment.', 'shashura-mobile-money-for-camptix' );
@@ -858,8 +878,8 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		$i        = count( $attempts ) - 1;
 
 		if ( is_wp_error( $res ) ) {
-			$http = CTX_Shashura_API::http_status( $res );
-			$code = CTX_Shashura_API::error_code( $res );
+			$http = Shasmomo_API::http_status( $res );
+			$code = Shasmomo_API::error_code( $res );
 			$camptix->log( 'Shashura requestToPay failed: ' . $res->get_error_message(), $ctx['first'], array( 'ref' => $attempt['ref'], 'code' => $code, 'http' => $http ), 'payment' );
 
 			if ( $http >= 400 && $http < 500 ) {
@@ -905,7 +925,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		if ( ! filter_var( $ip, FILTER_VALIDATE_IP ) ) {
 			$ip = $remote;
 		}
-		return (string) apply_filters( 'ctx_shashura_client_ip', $ip );
+		return (string) apply_filters( 'shasmomo_client_ip', $ip );
 	}
 
 	/**
@@ -914,17 +934,17 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	 */
 	private function ip_allowance() {
 		$hour = gmdate( 'YmdH' );
-		$key  = 'ctx_shashura_kyc_' . md5( $this->client_ip() . '|' . $hour );
+		$key  = 'shasmomo_kyc_' . md5( $this->client_ip() . '|' . $hour );
 		$n    = (int) get_transient( $key );
-		if ( $n >= (int) apply_filters( 'ctx_shashura_lookups_per_ip', self::LOOKUPS_PER_IP ) ) {
+		if ( $n >= (int) apply_filters( 'shasmomo_lookups_per_ip', self::LOOKUPS_PER_IP ) ) {
 			return false;
 		}
 		set_transient( $key, $n + 1, HOUR_IN_SECONDS );
 
-		$site_key = 'ctx_shashura_kyc_site_' . $hour;
+		$site_key = 'shasmomo_kyc_site_' . $hour;
 		$site     = (int) get_transient( $site_key ) + 1;
 		set_transient( $site_key, $site, HOUR_IN_SECONDS );
-		if ( $site === (int) apply_filters( 'ctx_shashura_lookups_alert', self::LOOKUPS_ALERT ) ) {
+		if ( $site === (int) apply_filters( 'shasmomo_lookups_alert', self::LOOKUPS_ALERT ) ) {
 			wp_mail(
 				get_option( 'admin_email' ),
 				sprintf( '[%s] Unusual number of mobile money number checks', wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) ),
@@ -953,8 +973,8 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	}
 
 	private function handle_status( $ctx ) {
-		$nonce = isset( $_GET['_ctxnonce'] ) ? sanitize_key( wp_unslash( $_GET['_ctxnonce'] ) ) : '';
-		if ( ! $ctx || ! wp_verify_nonce( $nonce, 'ctx_shashura_' . $ctx['token'] ) ) {
+		$nonce = isset( $_GET['_shasmomo_nonce'] ) ? sanitize_key( wp_unslash( $_GET['_shasmomo_nonce'] ) ) : '';
+		if ( ! $ctx || ! wp_verify_nonce( $nonce, 'shasmomo_' . $ctx['token'] ) ) {
 			wp_send_json( array( 'state' => 'error' ), 403 );
 		}
 
@@ -989,7 +1009,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			if ( $paid ) {
 				$out['details'] = array(
 					'name'      => $this->display_name( $paid[0]['name'] ),
-					'phone'     => CTX_Shashura_Phone::mask( $paid[0]['msisdn'] ),
+					'phone'     => Shasmomo_Phone::mask( $paid[0]['msisdn'] ),
 					'network'   => 'AIRTEL' === $paid[0]['network'] ? 'Airtel' : 'MTN',
 					'amount'    => 'UGX ' . number_format_i18n( $paid[0]['paid_amount'] ),
 					'reference' => $paid[0]['tid'] ? $paid[0]['tid'] : $paid[0]['ref'],
@@ -1038,8 +1058,8 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	}
 
 	private function handle_cancel( $ctx ) {
-		$nonce = isset( $_GET['_ctxnonce'] ) ? sanitize_key( wp_unslash( $_GET['_ctxnonce'] ) ) : '';
-		if ( ! wp_verify_nonce( $nonce, 'ctx_shashura_' . $ctx['token'] ) ) {
+		$nonce = isset( $_GET['_shasmomo_nonce'] ) ? sanitize_key( wp_unslash( $_GET['_shasmomo_nonce'] ) ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'shasmomo_' . $ctx['token'] ) ) {
 			$this->render_message( __( 'Link expired', 'shashura-mobile-money-for-camptix' ), __( 'This cancel link has expired. Go back and try again.', 'shashura-mobile-money-for-camptix' ), 403, true );
 		}
 		$this->guard_draft( $ctx );
@@ -1273,11 +1293,11 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	}
 
 	private function nonce_field( $ctx ) {
-		printf( '<input type="hidden" name="_ctxnonce" value="%s">', esc_attr( wp_create_nonce( 'ctx_shashura_' . $ctx['token'] ) ) );
+		printf( '<input type="hidden" name="_shasmomo_nonce" value="%s">', esc_attr( wp_create_nonce( 'shasmomo_' . $ctx['token'] ) ) );
 	}
 
 	private function cancel_link( $ctx, $label = null ) {
-		$url = $this->url( 'payment_cancel', $ctx['token'], array( '_ctxnonce' => wp_create_nonce( 'ctx_shashura_' . $ctx['token'] ) ) );
+		$url = $this->url( 'payment_cancel', $ctx['token'], array( '_shasmomo_nonce' => wp_create_nonce( 'shasmomo_' . $ctx['token'] ) ) );
 		printf( '<a class="link" href="%s">%s</a>', esc_url( $url ), esc_html( $label ? $label : __( 'Cancel order', 'shashura-mobile-money-for-camptix' ) ) );
 	}
 
@@ -1312,7 +1332,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			<?php if ( '' !== $p['name'] ) : ?>
 				<dt><?php esc_html_e( 'Account name', 'shashura-mobile-money-for-camptix' ); ?></dt><dd><?php echo esc_html( $this->display_name( $p['name'] ) ); ?></dd>
 			<?php endif; ?>
-			<dt><?php esc_html_e( 'Mobile number', 'shashura-mobile-money-for-camptix' ); ?></dt><dd><?php echo esc_html( CTX_Shashura_Phone::pretty( $p['msisdn'] ) ); ?></dd>
+			<dt><?php esc_html_e( 'Mobile number', 'shashura-mobile-money-for-camptix' ); ?></dt><dd><?php echo esc_html( Shasmomo_Phone::pretty( $p['msisdn'] ) ); ?></dd>
 			<dt><?php esc_html_e( 'Network', 'shashura-mobile-money-for-camptix' ); ?></dt><dd><?php echo esc_html( 'AIRTEL' === $p['network'] ? 'Airtel Money' : 'MTN Mobile Money' ); ?></dd>
 			<dt><?php esc_html_e( 'Amount', 'shashura-mobile-money-for-camptix' ); ?></dt><dd class="amt"><?php echo esc_html( $this->amount_text( $ctx ) ); ?></dd>
 		</dl>
@@ -1328,7 +1348,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	}
 
 	private function render_wait( $ctx, $a ) {
-		$status_url = $this->url( 'shashura_status', $ctx['token'], array( '_ctxnonce' => wp_create_nonce( 'ctx_shashura_' . $ctx['token'] ) ) );
+		$status_url = $this->url( 'shashura_status', $ctx['token'], array( '_shasmomo_nonce' => wp_create_nonce( 'shasmomo_' . $ctx['token'] ) ) );
 		$return_url = $this->url( 'payment_return', $ctx['token'] );
 		$retry_url  = $this->url( 'shashura_pay', $ctx['token'] );
 		ob_start();
@@ -1340,7 +1360,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 					/* translators: 1: network, 2: masked number, 3: amount */
 					esc_html__( 'We sent a %1$s request to %2$s for %3$s. Enter your PIN on your phone to approve it.', 'shashura-mobile-money-for-camptix' ),
 					esc_html( 'AIRTEL' === $a['network'] ? 'Airtel Money' : 'MTN Mobile Money' ),
-					'<strong>' . esc_html( CTX_Shashura_Phone::mask( $a['msisdn'] ) ) . '</strong>',
+					'<strong>' . esc_html( Shasmomo_Phone::mask( $a['msisdn'] ) ) . '</strong>',
 					'<strong>' . esc_html( 'UGX ' . number_format_i18n( $a['amount'] ) ) . '</strong>'
 				);
 			?></p>
@@ -1389,7 +1409,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	private function render_page( $title, $body, $status = 200 ) {
 		status_header( $status );
 		header( 'Content-Type: text/html; charset=' . get_option( 'blog_charset' ) );
-		$accent = sanitize_hex_color( (string) apply_filters( 'ctx_shashura_accent_color', '#1d4ed8' ) );
+		$accent = sanitize_hex_color( (string) apply_filters( 'shasmomo_accent_color', '#1d4ed8' ) );
 		$accent = $accent ? $accent : '#1d4ed8';
 
 		// This page is a standalone HTML document (no get_header()/wp_head()), so
@@ -1397,12 +1417,12 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		// handling — then printed directly by handle rather than via wp_head()/
 		// wp_footer(), which would also pull in every other plugin's and the
 		// theme's own head/footer output onto this minimal, noindex payment page.
-		wp_enqueue_style( 'ctx-shashura-checkout', CTX_SHASHURA_URL . 'assets/css/checkout.css', array(), CTX_SHASHURA_VERSION );
-		wp_add_inline_style( 'ctx-shashura-checkout', ':root{--a:' . esc_attr( $accent ) . '}' );
+		wp_enqueue_style( 'shasmomo-checkout', SHASMOMO_URL . 'assets/css/checkout.css', array(), SHASMOMO_VERSION );
+		wp_add_inline_style( 'shasmomo-checkout', ':root{--a:' . esc_attr( $accent ) . '}' );
 
-		wp_enqueue_script( 'ctx-shashura-checkout', CTX_SHASHURA_URL . 'assets/js/checkout.js', array(), CTX_SHASHURA_VERSION, true );
+		wp_enqueue_script( 'shasmomo-checkout', SHASMOMO_URL . 'assets/js/checkout.js', array(), SHASMOMO_VERSION, true );
 		if ( ! empty( $this->wait_script_data ) ) {
-			wp_localize_script( 'ctx-shashura-checkout', 'ctxShashuraWait', $this->wait_script_data );
+			wp_localize_script( 'shasmomo-checkout', 'shasmomoWait', $this->wait_script_data );
 		}
 		?><!doctype html>
 <html <?php language_attributes(); ?>>
@@ -1411,11 +1431,13 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title><?php echo esc_html( $title . ' – ' . get_bloginfo( 'name' ) ); ?></title>
-<?php wp_print_styles( array( 'ctx-shashura-checkout' ) ); ?>
+<?php wp_print_styles( array( 'shasmomo-checkout' ) ); ?>
 </head>
 <body><main class="card"><?php echo $body; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- assembled from escaped parts above. ?></main>
+<?php if ( ! empty( $this->options['show_branding'] ) ) : ?>
 <p class="poweredby"><?php esc_html_e( 'Powered by', 'shashura-mobile-money-for-camptix' ); ?> <a href="https://shashura.com" target="_blank" rel="noopener noreferrer">Shashura</a></p>
-<?php wp_print_scripts( array( 'ctx-shashura-checkout' ) ); ?>
+<?php endif; ?>
+<?php wp_print_scripts( array( 'shasmomo-checkout' ) ); ?>
 </body>
 </html>
 		<?php

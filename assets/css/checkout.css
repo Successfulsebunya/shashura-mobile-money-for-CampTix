@@ -1,7 +1,7 @@
 /* Shashura checkout pages — number entry, confirm, waiting, receipt, and
  * error/message screens all share this single stylesheet via render_page().
  * The --a (accent colour) custom property is set per-request with
- * wp_add_inline_style(), since it comes from the ctx_shashura_accent_color
+ * wp_add_inline_style(), since it comes from the shasmomo_accent_color
  * filter rather than being static.
  */
 *{box-sizing:border-box}
