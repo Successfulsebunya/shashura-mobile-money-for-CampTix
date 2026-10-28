@@ -26,7 +26,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
+class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 
 	public $id                   = 'shashura';
 	public $name                 = 'Mobile Money (MTN / Airtel)';
@@ -307,7 +307,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	}
 
 	private function webhook_url() {
-		return rest_url( 'camptix-shashura/v1/webhook' );
+		return rest_url( 'shasmomo/v1/webhook' );
 	}
 
 	/* ==================================================================
@@ -1083,15 +1083,19 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	}
 
 	/* ==================================================================
-	 * Webhook (REST): POST /wp-json/camptix-shashura/v1/webhook
+	 * Webhook (REST): POST /wp-json/shasmomo/v1/webhook
 	 * ================================================================ */
 
 	public function register_rest_routes() {
-		register_rest_route( 'camptix-shashura/v1', '/webhook', array(
-			'methods'             => 'POST',
-			'callback'            => array( $this, 'rest_webhook' ),
-			'permission_callback' => '__return_true', // Authenticated by the HMAC signature below.
-		) );
+		// camptix-shashura/v1 is the original route. It stays registered so Callback URLs
+		// already saved in the Shashura dashboard keep working.
+		foreach ( array( 'shasmomo/v1', 'camptix-shashura/v1' ) as $namespace ) {
+			register_rest_route( $namespace, '/webhook', array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'rest_webhook' ),
+				'permission_callback' => '__return_true', // Authenticated by the HMAC signature below.
+			) );
+		}
 	}
 
 	public function rest_webhook( WP_REST_Request $request ) {
