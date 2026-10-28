@@ -22,7 +22,7 @@ The plugin connects CampTix to the Shashura Mobile Money API and handles the ful
 
 ## Screenshots
 
-**Payment configuration**: Tickets → Setup → Payment: credentials, environment selection, and live connection status.
+**Payment configuration**: Tickets → Setup → Payment: credentials, environment, webhook URL, buyer name display, rate-limit settings, the optional credit link, and live connection status.
 
 ![Payment configuration screen](screenshot-1.png)
 
@@ -61,6 +61,8 @@ An automated end-to-end suite (92 checks) has been run against WordPress with bo
    - Choose **Sandbox** while testing. Switch to **Production** only when ready to take real payments.
    - Enter the **Webhook Secret** shown on your Shashura app. Mobile Money is not offered at checkout until this is set.
    - Leave **API Base URL** blank to use Shashura's default endpoint, or set it to point at a specific Shashura deployment.
+   - If the site is behind a proxy or load balancer, set **Visitor IP from** to the header it sends, and **Trusted proxies** to the number of proxies in front of the site (usually 1).
+   - **Show "Powered by Shashura"** is off by default. Tick it to show a small credit link below the payment pages.
 4. Copy the webhook URL shown under Webhook Secret and set it as the **Callback URL** on the matching app in your Shashura dashboard.
 5. Ask Shashura to whitelist your server's outbound IP address for that app. Requests from an IP that is not whitelisted are rejected.
 6. Save your settings. The **Connection** line confirms whether the credentials authenticate successfully.
@@ -137,6 +139,8 @@ For help with a Shashura account, API credentials, or a specific payment, contac
 ## Credits
 
 Developed and maintained by [Cipherwave Software Limited](https://shashura.com).
+
+Contributors: Moses Ssebuwufu ([ssebuwufumoses](https://profiles.wordpress.org/ssebuwufumoses/) on WordPress.org, [@ssebuwufumoses](https://github.com/ssebuwufumoses) on GitHub).
 
 ## License
 
