@@ -77,6 +77,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			'base_url'       => '',
 			'name_display'   => 'full',
 			'ip_source'      => 'remote_addr',
+			'proxy_hops'     => 1,
 			// Off by default: a "Powered by Shashura" credit link must never
 			// appear on a buyer-facing page without the site administrator
 			// explicitly opting in (WordPress.org Plugin Directory guidelines).
@@ -149,6 +150,9 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		$this->add_settings_field_helper( 'ip_source', __( 'Visitor IP from', 'shashura-mobile-money-for-camptix' ), array( $this, 'field_ip_source' ),
 			__( 'Used to rate-limit number checks. Choose a proxy header only if your site really sits behind that proxy: visitors can fake these headers otherwise.', 'shashura-mobile-money-for-camptix' ) );
 
+		$this->add_settings_field_helper( 'proxy_hops', __( 'Trusted proxies', 'shashura-mobile-money-for-camptix' ), array( $this, 'field_proxy_hops' ),
+			__( 'Only used with X-Forwarded-For: the number of proxies you control in front of the site (usually 1).', 'shashura-mobile-money-for-camptix' ) );
+
 		$this->add_settings_field_helper( 'show_branding', __( 'Show "Powered by Shashura"', 'shashura-mobile-money-for-camptix' ), array( $this, 'field_show_branding' ),
 			__( 'Off by default. Turning this on adds a small "Powered by Shashura" credit link to the buyer-facing payment pages.', 'shashura-mobile-money-for-camptix' ) );
 
@@ -201,6 +205,15 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			printf( '<option value="%s"%s>%s</option>', esc_attr( $k ), selected( $args['value'], $k, false ), esc_html( $label ) );
 		}
 		echo '</select>';
+		$this->field_description( $args );
+	}
+
+	public function field_proxy_hops( $args ) {
+		printf(
+			'<input type="number" class="small-text" min="1" max="5" step="1" name="%s" value="%s" />',
+			esc_attr( $args['name'] ),
+			esc_attr( (string) max( 1, (int) $args['value'] ) )
+		);
 		$this->field_description( $args );
 	}
 
@@ -261,6 +274,9 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		}
 		if ( isset( $input['ip_source'] ) ) {
 			$output['ip_source'] = in_array( $input['ip_source'], array( 'remote_addr', 'cloudflare', 'x_real_ip', 'x_forwarded_for' ), true ) ? $input['ip_source'] : 'remote_addr';
+		}
+		if ( isset( $input['proxy_hops'] ) ) {
+			$output['proxy_hops'] = min( 5, max( 1, absint( $input['proxy_hops'] ) ) );
 		}
 		// Checkbox: absent from $input entirely when unchecked, so this only
 		// turns on if the admin explicitly ticked it on this save.
@@ -918,7 +934,12 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		} elseif ( 'x_real_ip' === $source && ! empty( $_SERVER['HTTP_X_REAL_IP'] ) ) {
 			$ip = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_REAL_IP'] ) );
 		} elseif ( 'x_forwarded_for' === $source && ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
-			$ip = trim( explode( ',', sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) )[0] );
+			// Each trusted proxy appends the address it received the request from, so the
+			// visitor is N entries from the right. Entries further left come from the request
+			// itself and can be set to anything, so they are never used.
+			$list  = array_values( array_filter( array_map( 'trim', explode( ',', sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) ) ) ) );
+			$index = count( $list ) - max( 1, (int) $this->options['proxy_hops'] );
+			$ip    = $index >= 0 ? $list[ $index ] : '';
 		}
 		// filter_var() below is the real validation: anything that isn't a well-formed IP
 		// (a spoofed or malformed header) falls back to REMOTE_ADDR.
