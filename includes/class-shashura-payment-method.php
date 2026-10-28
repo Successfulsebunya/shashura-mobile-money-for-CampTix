@@ -769,7 +769,9 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 
 		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || 'POST' !== sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) {
 			$notice = '';
-			if ( isset( $_GET['notice'] ) && 'declined' === $_GET['notice'] ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display-only flag, nothing is changed.
+			$flag = isset( $_GET['notice'] ) ? sanitize_key( wp_unslash( $_GET['notice'] ) ) : '';
+			if ( 'declined' === $flag ) {
 				$notice = __( 'The last payment request was declined or expired. You can try again.', 'shashura-mobile-money-for-camptix' );
 			}
 			$this->render_phone( $ctx, '', $notice );
