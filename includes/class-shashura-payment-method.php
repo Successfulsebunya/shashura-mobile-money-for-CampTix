@@ -1304,7 +1304,12 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			}
 			$removed = true;
 		}
-		return array( 'items_removed' => $removed, 'items_retained' => false, 'messages' => array(), 'done' => count( $ids ) < 50 );
+		return array(
+			'items_removed'  => $removed,
+			'items_retained' => $removed,
+			'messages'       => $removed ? array( __( 'Mobile Money payment references, amounts and statuses were kept for the event\'s accounting records.', 'shashura-mobile-money-for-camptix' ) ) : array(),
+			'done'           => count( $ids ) < 50,
+		);
 	}
 
 	/* ==================================================================
