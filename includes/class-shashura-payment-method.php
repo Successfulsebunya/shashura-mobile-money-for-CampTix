@@ -321,18 +321,16 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		if ( ! is_string( $token ) || ! preg_match( '/^[a-f0-9]{32}$/', $token ) ) {
 			return null;
 		}
-		$ids = get_posts( array(
-			'post_type'        => 'tix_attendee',
-			'post_status'      => self::STATUSES,
-			'posts_per_page'   => -1,
-			'fields'           => 'ids',
-			'orderby'          => 'ID',
-			'order'            => 'ASC',
-			// phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.SuppressFilters_suppress_filters -- a payment callback must resolve its own order regardless of any front-end query filter (e.g. language/exclude filters) another plugin adds.
-			'suppress_filters' => true,
-			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- CampTix stores the payment token only as post meta; there is no other lookup path.
-			'meta_query'       => array( array( 'key' => 'tix_payment_token', 'value' => $token, 'compare' => '=', 'type' => 'CHAR' ) ),
-		) );
+		// The waiting page polls every few seconds, and the attendees of an order never change,
+		// so the token lookup (a meta query) is cached.
+		$cache_key = 'shasmomo_ids_' . $token;
+		$ids       = get_transient( $cache_key );
+		if ( ! is_array( $ids ) || ! $ids || false === get_post_status( (int) $ids[0] ) ) {
+			$ids = $this->find_attendee_ids( $token );
+			if ( $ids ) {
+				set_transient( $cache_key, $ids, HOUR_IN_SECONDS );
+			}
+		}
 		if ( ! $ids ) {
 			return null;
 		}
@@ -358,6 +356,23 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			'pending'  => is_array( $pend ) ? $pend : array(),
 			'lookups'  => (int) get_post_meta( $first, '_shashura_lookups', true ),
 		);
+	}
+
+	/** Attendee IDs of an order, oldest first. */
+	private function find_attendee_ids( $token ) {
+		$ids = get_posts( array(
+			'post_type'        => 'tix_attendee',
+			'post_status'      => self::STATUSES,
+			'posts_per_page'   => -1,
+			'fields'           => 'ids',
+			'orderby'          => 'ID',
+			'order'            => 'ASC',
+			// phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.SuppressFilters_suppress_filters -- a payment callback must resolve its own order regardless of any front-end query filter (e.g. language/exclude filters) another plugin adds.
+			'suppress_filters' => true,
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- CampTix stores the payment token only as post meta; there is no other lookup path.
+			'meta_query'       => array( array( 'key' => 'tix_payment_token', 'value' => $token, 'compare' => '=', 'type' => 'CHAR' ) ),
+		) );
+		return array_map( 'intval', $ids );
 	}
 
 	private function save( $ctx, $key, $value ) {
