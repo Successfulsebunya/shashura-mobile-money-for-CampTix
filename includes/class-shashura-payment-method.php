@@ -59,6 +59,9 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	/** Declared here too: CampTix 1.x's base class doesn't, which is deprecated on PHP 8.2+. */
 	public $camptix_options;
 
+	/** @var array Option key => wp-config.php constant, for settings defined there. */
+	private $locked = array();
+
 	/** @var array Orders already looked at during the current timeout sweep. */
 	private $swept = array();
 
@@ -85,6 +88,18 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			'show_branding'  => false,
 			'last_check'     => '',
 		), $this->get_payment_options() );
+
+		// Credentials can be kept out of the database by defining them in wp-config.php.
+		foreach ( array(
+			'client_id'      => 'SHASMOMO_CLIENT_ID',
+			'client_secret'  => 'SHASMOMO_CLIENT_SECRET',
+			'webhook_secret' => 'SHASMOMO_WEBHOOK_SECRET',
+		) as $key => $constant ) {
+			if ( defined( $constant ) && '' !== (string) constant( $constant ) ) {
+				$this->options[ $key ] = (string) constant( $constant );
+				$this->locked[ $key ]  = $constant;
+			}
+		}
 
 		add_action( 'template_redirect', array( $this, 'template_redirect' ) );
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
@@ -160,13 +175,33 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		$this->add_settings_field_helper( 'last_check', __( 'Connection', 'shashura-mobile-money-for-camptix' ), array( $this, 'field_status' ) );
 	}
 
+	/** Shows a note instead of the input when the setting comes from wp-config.php. */
+	private function field_locked( $args ) {
+		$key = preg_match( '/\[([a-z_]+)\]$/', $args['name'], $m ) ? $m[1] : '';
+		if ( ! isset( $this->locked[ $key ] ) ) {
+			return false;
+		}
+		printf(
+			'<p><em>%s</em></p>',
+			/* translators: %s: constant name */
+			esc_html( sprintf( __( 'Set in wp-config.php (%s).', 'shashura-mobile-money-for-camptix' ), $this->locked[ $key ] ) )
+		);
+		return true;
+	}
+
 	public function field_plain( $args ) {
+		if ( $this->field_locked( $args ) ) {
+			return;
+		}
 		printf( '<input type="text" class="regular-text" autocomplete="off" name="%s" value="%s" />', esc_attr( $args['name'] ), esc_attr( $args['value'] ) );
 		$this->field_description( $args );
 	}
 
 	/** Secrets are never printed back into the page. Leaving the box empty keeps the saved value. */
 	public function field_secret( $args ) {
+		if ( $this->field_locked( $args ) ) {
+			return;
+		}
 		$has = '' !== (string) $args['value'];
 		printf(
 			'<input type="password" class="regular-text" autocomplete="new-password" name="%s" value="" placeholder="%s" />',
@@ -308,6 +343,12 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 				'ok'  => ! is_wp_error( $result ),
 				'msg' => is_wp_error( $result ) ? $this->admin_error_text( $result ) : '',
 			);
+		}
+
+		// Values from wp-config.php are used above but never written to the database.
+		$stored = $this->get_payment_options();
+		foreach ( array_keys( $this->locked ) as $key ) {
+			$output[ $key ] = isset( $stored[ $key ] ) ? $stored[ $key ] : '';
 		}
 		return $output;
 	}
