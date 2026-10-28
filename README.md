@@ -22,17 +22,17 @@ The plugin connects CampTix to the Shashura Mobile Money API and handles the ful
 
 ## Screenshots
 
-**Payment configuration**: Tickets → Setup → Payment: credentials, environment selection, and live connection status.
+**Payment configuration**: Tickets → Setup → Payment: credentials, environment, webhook URL, buyer name display, rate-limit settings, the optional credit link, and live connection status.
 
 ![Payment configuration screen](screenshot-1.png)
 
-**Buyer-facing checkout flow**: from entering a mobile number through to the CampTix ticket page, including the KYC-rejection state for an unregistered number.
+**Buyer-facing checkout flow**: entering a mobile number, confirming the verified account, approving on the phone, and the payment receipt.
 
 ![Checkout flow](screenshot-2.png)
 
-**Optional "Powered by Shashura" footer**, shown here on the PIN-approval step. Off by default; the site administrator can turn it on from the payment settings.
+**PIN-approval step**: the countdown matches the time before a new prompt can be sent. An optional "Powered by Shashura" credit can be shown below the payment pages; it is off by default.
 
-![PIN-approval step with Shashura footer](screenshot-3.png)
+![PIN-approval step](screenshot-3.png)
 
 ## Reliability and safety
 
@@ -61,9 +61,19 @@ An automated end-to-end suite (92 checks) has been run against WordPress with bo
    - Choose **Sandbox** while testing. Switch to **Production** only when ready to take real payments.
    - Enter the **Webhook Secret** shown on your Shashura app. Mobile Money is not offered at checkout until this is set.
    - Leave **API Base URL** blank to use Shashura's default endpoint, or set it to point at a specific Shashura deployment.
+   - If the site is behind a proxy or load balancer, set **Visitor IP from** to the header it sends, and **Trusted proxies** to the number of proxies in front of the site (usually 1).
+   - **Show "Powered by Shashura"** is off by default. Tick it to show a small credit link below the payment pages.
 4. Copy the webhook URL shown under Webhook Secret and set it as the **Callback URL** on the matching app in your Shashura dashboard.
 5. Ask Shashura to whitelist your server's outbound IP address for that app. Requests from an IP that is not whitelisted are rejected.
 6. Save your settings. The **Connection** line confirms whether the credentials authenticate successfully.
+
+To keep the credentials out of the database, define them in `wp-config.php` instead. The matching fields then show "Set in wp-config.php":
+
+```php
+define( 'SHASMOMO_CLIENT_ID', 'PID_...' );
+define( 'SHASMOMO_CLIENT_SECRET', '...' );
+define( 'SHASMOMO_WEBHOOK_SECRET', '...' );
+```
 
 ## Getting your Shashura API credentials
 
@@ -117,16 +127,22 @@ This service is provided by Shashura (operated by Techdom Digital Solutions): [T
 
 ## Privacy
 
-Against each paid order, this plugin stores the payer's registered name, a masked mobile number, the mobile network, and the Shashura transaction reference, for reconciliation and support. Full, unmasked phone numbers and names are included in WordPress's own **Tools → Export Personal Data** and **Erase Personal Data** tools, so data-subject requests are handled through core WordPress, not a separate process. This plugin never handles or stores card numbers, mobile money PINs, or Shashura account credentials.
+While a payment request is open, the plugin keeps the buyer's full mobile number. Once the request is settled (paid, failed or rejected), only a masked number (+256 77* *** 456) is kept.
+
+Against each paid order, this plugin stores the payer's registered name, a masked mobile number, the mobile network, and the Shashura transaction reference, for reconciliation and support. Stored phone numbers and names are included in WordPress's own **Tools → Export Personal Data** and **Erase Personal Data** tools, so data-subject requests are handled through core WordPress, not a separate process. This plugin never handles or stores card numbers, mobile money PINs, or Shashura account credentials.
 
 ## Developer filters
 
 | Filter | Default | Description |
 |---|---|---|
 | `shasmomo_lookups_per_ip` | `20` | Number verification checks allowed per visitor IP per hour. |
+| `shasmomo_lookups_per_number` | `3` | Number verification checks allowed per phone number per hour, across all orders. |
 | `shasmomo_lookups_alert` | `300` | Site-wide number verification checks per hour that trigger an admin email. |
 | `shasmomo_client_ip` | n/a | Overrides the IP address used for rate limiting. |
-| `shasmomo_accent_color` | `#1d4ed8` | Accent colour used on the payment pages. |
+| `shasmomo_accent_color` | `#1d4ed8` | Accent colour used on the payment pages. Button text switches between white and near-black to stay readable. |
+| `shasmomo_merchant_logo` | Site Icon, then Custom Logo | Image shown in the payment page header. |
+| `shasmomo_network_logo` | empty | Image URL for a network badge (`mtn` or `airtel`), for sites with permission to use the official logos. |
+| `shasmomo_template` | plugin's `templates/` | Path of a payment page template. Themes can also override one by copying it to `your-theme/shashura-mobile-money-for-camptix/`. |
 | `shasmomo_http_timeout` | `25` | Timeout, in seconds, for calls to the Shashura API. |
 | `shasmomo_base_url` | `https://shashura.com/api/v1` | Overrides the API base URL on top of the settings field. HTTPS is enforced except for local or loopback addresses. |
 
@@ -137,6 +153,8 @@ For help with a Shashura account, API credentials, or a specific payment, contac
 ## Credits
 
 Developed and maintained by [Cipherwave Software Limited](https://shashura.com).
+
+Contributors: Moses Ssebuwufu ([ssebuwufumoses](https://profiles.wordpress.org/ssebuwufumoses/) on WordPress.org, [@ssebuwufumoses](https://github.com/ssebuwufumoses) on GitHub).
 
 ## License
 
