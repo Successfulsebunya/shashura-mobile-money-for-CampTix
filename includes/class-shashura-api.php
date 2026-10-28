@@ -39,7 +39,7 @@ class Shasmomo_API {
 		$base = (string) apply_filters( 'shasmomo_base_url', $base );
 		// Credentials and bearer tokens must never travel over plain HTTP, except to a local/loopback
 		// host (used to point the plugin at a dev gateway instance running on the same machine).
-		if ( 0 !== strpos( $base, 'https://' ) && ! self::is_local_http( $base ) && ! apply_filters( 'shasmomo_allow_insecure_base_url', false ) ) {
+		if ( ! self::is_allowed_base_url( $base ) ) {
 			$base = self::BASE_URL;
 		}
 
@@ -48,6 +48,11 @@ class Shasmomo_API {
 		$this->client_secret  = (string) $client_secret;
 		$this->environment    = in_array( $environment, array( 'sandbox', 'production' ), true ) ? $environment : 'production';
 		$this->webhook_secret = (string) $webhook_secret;
+	}
+
+	/** HTTPS, or plain HTTP to a local host, unless insecure URLs are allowed by filter. */
+	public static function is_allowed_base_url( $url ) {
+		return 0 === strpos( $url, 'https://' ) || self::is_local_http( $url ) || apply_filters( 'shasmomo_allow_insecure_base_url', false );
 	}
 
 	private static function is_local_http( $url ) {
