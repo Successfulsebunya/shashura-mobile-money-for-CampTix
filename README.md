@@ -126,6 +126,7 @@ Against each paid order, this plugin stores the payer's registered name, a maske
 | Filter | Default | Description |
 |---|---|---|
 | `shasmomo_lookups_per_ip` | `20` | Number verification checks allowed per visitor IP per hour. |
+| `shasmomo_lookups_per_number` | `3` | Number verification checks allowed per phone number per hour, across all orders. |
 | `shasmomo_lookups_alert` | `300` | Site-wide number verification checks per hour that trigger an admin email. |
 | `shasmomo_client_ip` | n/a | Overrides the IP address used for rate limiting. |
 | `shasmomo_accent_color` | `#1d4ed8` | Accent colour used on the payment pages. Button text switches between white and near-black to stay readable. |
