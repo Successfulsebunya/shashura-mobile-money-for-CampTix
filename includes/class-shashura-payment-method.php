@@ -1109,6 +1109,13 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			return new WP_REST_Response( array( 'ok' => false, 'error' => 'bad_signature' ), 401 );
 		}
 
+		// The same signed body again (a retry or a replay) after it already settled the order:
+		// acknowledge it without asking Shashura again.
+		$seen_key = 'shasmomo_wh_' . md5( $raw );
+		if ( get_transient( $seen_key ) ) {
+			return new WP_REST_Response( array( 'ok' => true, 'duplicate' => true ), 200 );
+		}
+
 		$event = json_decode( $raw, true );
 		if ( ! is_array( $event ) ) {
 			return new WP_REST_Response( array( 'ok' => false, 'error' => 'bad_json' ), 400 );
@@ -1153,6 +1160,9 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 		$state = $this->settle( $ctx, false, true );
 		if ( 'busy' === $state ) {
 			return new WP_REST_Response( array( 'ok' => false, 'retry' => true ), 503 ); // Shashura retries later.
+		}
+		if ( in_array( $state, array( 'paid', 'failed' ), true ) ) {
+			set_transient( $seen_key, 1, 10 * MINUTE_IN_SECONDS );
 		}
 		return new WP_REST_Response( array( 'ok' => true, 'state' => $state ), 200 );
 	}
