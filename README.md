@@ -65,6 +65,14 @@ An automated end-to-end suite (92 checks) has been run against WordPress with bo
 5. Ask Shashura to whitelist your server's outbound IP address for that app. Requests from an IP that is not whitelisted are rejected.
 6. Save your settings. The **Connection** line confirms whether the credentials authenticate successfully.
 
+To keep the credentials out of the database, define them in `wp-config.php` instead. The matching fields then show "Set in wp-config.php":
+
+```php
+define( 'SHASMOMO_CLIENT_ID', 'PID_...' );
+define( 'SHASMOMO_CLIENT_SECRET', '...' );
+define( 'SHASMOMO_WEBHOOK_SECRET', '...' );
+```
+
 ## Getting your Shashura API credentials
 
 This plugin needs three values from your Shashura merchant account: a **Client ID**, a **Client Secret**, and a **Webhook Secret**. All three are issued from the Apps page of your Shashura merchant dashboard.
