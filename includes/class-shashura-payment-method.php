@@ -66,6 +66,9 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	 * ================================================================ */
 
 	public function camptix_init() {
+		$this->name        = __( 'Mobile Money (MTN / Airtel)', 'shashura-mobile-money-for-camptix' );
+		$this->description = __( 'Pay with MTN or Airtel Mobile Money via Shashura.', 'shashura-mobile-money-for-camptix' );
+
 		$this->options = array_merge( array(
 			'client_id'      => '',
 			'client_secret'  => '',
@@ -92,7 +95,7 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 
 	public function ensure_ugx( $currencies ) {
 		if ( ! isset( $currencies['UGX'] ) ) {
-			$currencies['UGX'] = array( 'label' => 'Uganda Shilling', 'format' => 'UGX %s', 'decimal_point' => 0 );
+			$currencies['UGX'] = array( 'label' => __( 'Uganda Shilling', 'shashura-mobile-money-for-camptix' ), 'format' => 'UGX %s', 'decimal_point' => 0 );
 		}
 		return $currencies;
 	}
@@ -1196,12 +1199,12 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 	 * ================================================================ */
 
 	public function register_exporter( $exporters ) {
-		$exporters['shashura-mobile-money-for-camptix'] = array( 'exporter_friendly_name' => 'CampTix Mobile Money', 'callback' => array( $this, 'privacy_export' ) );
+		$exporters['shashura-mobile-money-for-camptix'] = array( 'exporter_friendly_name' => __( 'CampTix Mobile Money', 'shashura-mobile-money-for-camptix' ), 'callback' => array( $this, 'privacy_export' ) );
 		return $exporters;
 	}
 
 	public function register_eraser( $erasers ) {
-		$erasers['shashura-mobile-money-for-camptix'] = array( 'eraser_friendly_name' => 'CampTix Mobile Money', 'callback' => array( $this, 'privacy_erase' ) );
+		$erasers['shashura-mobile-money-for-camptix'] = array( 'eraser_friendly_name' => __( 'CampTix Mobile Money', 'shashura-mobile-money-for-camptix' ), 'callback' => array( $this, 'privacy_erase' ) );
 		return $erasers;
 	}
 
@@ -1228,16 +1231,16 @@ class CampTix_Payment_Method_Shashura extends CampTix_Payment_Method {
 			foreach ( is_array( $attempts ) ? $attempts : array() as $a ) {
 				$items[] = array(
 					'group_id'    => 'shashura-mobile-money-for-camptix',
-					'group_label' => 'Mobile Money payments',
+					'group_label' => __( 'Mobile Money payments', 'shashura-mobile-money-for-camptix' ),
 					'item_id'     => 'shashura-' . $id . '-' . $a['ref'],
 					'data'        => array(
-						array( 'name' => 'Reference', 'value' => $a['ref'] ),
-						array( 'name' => 'Date', 'value' => gmdate( 'Y-m-d H:i', (int) $a['created'] ) . ' UTC' ),
-						array( 'name' => 'Mobile number', 'value' => $a['msisdn'] ),
-						array( 'name' => 'Registered name', 'value' => $a['name'] ),
-						array( 'name' => 'Network', 'value' => $a['network'] ),
-						array( 'name' => 'Amount (UGX)', 'value' => (string) $a['amount'] ),
-						array( 'name' => 'Status', 'value' => $a['status'] ),
+						array( 'name' => __( 'Reference', 'shashura-mobile-money-for-camptix' ), 'value' => $a['ref'] ),
+						array( 'name' => __( 'Date', 'shashura-mobile-money-for-camptix' ), 'value' => gmdate( 'Y-m-d H:i', (int) $a['created'] ) . ' UTC' ),
+						array( 'name' => __( 'Mobile number', 'shashura-mobile-money-for-camptix' ), 'value' => $a['msisdn'] ),
+						array( 'name' => __( 'Registered name', 'shashura-mobile-money-for-camptix' ), 'value' => $a['name'] ),
+						array( 'name' => __( 'Network', 'shashura-mobile-money-for-camptix' ), 'value' => $a['network'] ),
+						array( 'name' => __( 'Amount (UGX)', 'shashura-mobile-money-for-camptix' ), 'value' => (string) $a['amount'] ),
+						array( 'name' => __( 'Status', 'shashura-mobile-money-for-camptix' ), 'value' => $a['status'] ),
 					),
 				);
 			}
