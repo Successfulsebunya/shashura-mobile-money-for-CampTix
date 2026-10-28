@@ -26,13 +26,13 @@ The plugin connects CampTix to the Shashura Mobile Money API and handles the ful
 
 ![Payment configuration screen](screenshot-1.png)
 
-**Buyer-facing checkout flow**: from entering a mobile number through to the CampTix ticket page, including the KYC-rejection state for an unregistered number.
+**Buyer-facing checkout flow**: entering a mobile number, confirming the verified account, approving on the phone, and the payment receipt.
 
 ![Checkout flow](screenshot-2.png)
 
-**Optional "Powered by Shashura" footer**, shown here on the PIN-approval step. Off by default; the site administrator can turn it on from the payment settings.
+**PIN-approval step**: the countdown matches the time before a new prompt can be sent. An optional "Powered by Shashura" credit can be shown below the payment pages; it is off by default.
 
-![PIN-approval step with Shashura footer](screenshot-3.png)
+![PIN-approval step](screenshot-3.png)
 
 ## Reliability and safety
 
@@ -128,7 +128,10 @@ Against each paid order, this plugin stores the payer's registered name, a maske
 | `shasmomo_lookups_per_ip` | `20` | Number verification checks allowed per visitor IP per hour. |
 | `shasmomo_lookups_alert` | `300` | Site-wide number verification checks per hour that trigger an admin email. |
 | `shasmomo_client_ip` | n/a | Overrides the IP address used for rate limiting. |
-| `shasmomo_accent_color` | `#1d4ed8` | Accent colour used on the payment pages. |
+| `shasmomo_accent_color` | `#1d4ed8` | Accent colour used on the payment pages. Button text switches between white and near-black to stay readable. |
+| `shasmomo_merchant_logo` | Site Icon, then Custom Logo | Image shown in the payment page header. |
+| `shasmomo_network_logo` | empty | Image URL for a network badge (`mtn` or `airtel`), for sites with permission to use the official logos. |
+| `shasmomo_template` | plugin's `templates/` | Path of a payment page template. Themes can also override one by copying it to `your-theme/shashura-mobile-money-for-camptix/`. |
 | `shasmomo_http_timeout` | `25` | Timeout, in seconds, for calls to the Shashura API. |
 | `shasmomo_base_url` | `https://shashura.com/api/v1` | Overrides the API base URL on top of the settings field. HTTPS is enforced except for local or loopback addresses. |
 
