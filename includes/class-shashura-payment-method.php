@@ -400,6 +400,23 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		return $ids ? (string) get_post_meta( $ids[0], 'tix_payment_token', true ) : '';
 	}
 
+	/** Masked number for an attempt, whether or not the full number is still stored. */
+	private function masked( $a ) {
+		if ( ! empty( $a['msisdn'] ) ) {
+			return Shasmomo_Phone::mask( $a['msisdn'] );
+		}
+		return isset( $a['msisdn_masked'] ) ? (string) $a['msisdn_masked'] : '';
+	}
+
+	/** Once an attempt is final the full number is no longer needed: keep only the masked one. */
+	private function redact( $a ) {
+		if ( ! empty( $a['msisdn'] ) ) {
+			$a['msisdn_masked'] = Shasmomo_Phone::mask( $a['msisdn'] );
+			$a['msisdn']        = '';
+		}
+		return $a;
+	}
+
 	/* ==================================================================
 	 * Lock: one settlement per order at a time (webhook vs. browser vs. sweep)
 	 * ================================================================ */
@@ -527,6 +544,9 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 				}
 			}
 
+			if ( in_array( $a['status'], self::FINAL_STATES, true ) ) {
+				$a = $this->redact( $a );
+			}
 			$attempts[ $i ] = $a;
 			$changed        = true;
 		}
@@ -631,7 +651,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 					'network_ref'        => isset( $p['network_ref'] ) ? $p['network_ref'] : '',
 					'network'            => $p['network'],
 					'payer_name'         => $p['name'],
-					'payer_number'       => Shasmomo_Phone::mask( $p['msisdn'] ),
+					'payer_number'       => $this->masked( $p ),
 					'amount'             => $p['paid_amount'],
 					'duplicate_payments' => count( $rec['paid'] ) > 1 ? wp_list_pluck( array_slice( $rec['paid'], 1 ), 'ref' ) : array(),
 				),
@@ -906,6 +926,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			if ( $http >= 400 && $http < 500 ) {
 				// Definitely not pushed.
 				$attempts[ $i ]['status'] = 'rejected';
+				$attempts[ $i ]           = $this->redact( $attempts[ $i ] );
 				$this->save( $ctx, '_shashura_attempts', $attempts );
 				$this->unlock( $lock );
 
@@ -1050,7 +1071,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			if ( $paid ) {
 				$out['details'] = array(
 					'name'      => $this->display_name( $paid[0]['name'] ),
-					'phone'     => Shasmomo_Phone::mask( $paid[0]['msisdn'] ),
+					'phone'     => $this->masked( $paid[0] ),
 					'network'   => 'AIRTEL' === $paid[0]['network'] ? 'Airtel' : 'MTN',
 					'amount'    => 'UGX ' . number_format_i18n( $paid[0]['paid_amount'] ),
 					'reference' => $paid[0]['tid'] ? $paid[0]['tid'] : $paid[0]['ref'],
@@ -1285,6 +1306,13 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 					'group_label' => __( 'Mobile Money payments', 'shashura-mobile-money-for-camptix' ),
 					'item_id'     => 'shashura-' . $id . '-' . $a['ref'],
 					'data'        => array(
+						array( 'name' => 'Reference', 'value' => $a['ref'] ),
+						array( 'name' => 'Date', 'value' => gmdate( 'Y-m-d H:i', (int) $a['created'] ) . ' UTC' ),
+						array( 'name' => 'Mobile number', 'value' => ! empty( $a['msisdn'] ) ? $a['msisdn'] : $this->masked( $a ) ),
+						array( 'name' => 'Registered name', 'value' => $a['name'] ),
+						array( 'name' => 'Network', 'value' => $a['network'] ),
+						array( 'name' => 'Amount (UGX)', 'value' => (string) $a['amount'] ),
+						array( 'name' => 'Status', 'value' => $a['status'] ),
 						array( 'name' => __( 'Reference', 'shashura-mobile-money-for-camptix' ), 'value' => $a['ref'] ),
 						array( 'name' => __( 'Date', 'shashura-mobile-money-for-camptix' ), 'value' => gmdate( 'Y-m-d H:i', (int) $a['created'] ) . ' UTC' ),
 						array( 'name' => __( 'Mobile number', 'shashura-mobile-money-for-camptix' ), 'value' => $a['msisdn'] ),
@@ -1306,8 +1334,9 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		foreach ( $ids as $id ) {
 			$attempts = get_post_meta( $id, '_shashura_attempts', true );
 			foreach ( is_array( $attempts ) ? $attempts : array() as $i => $a ) {
-				$attempts[ $i ]['msisdn'] = '256000000000';
-				$attempts[ $i ]['name']   = '';
+				$attempts[ $i ]['msisdn']        = '';
+				$attempts[ $i ]['msisdn_masked'] = '';
+				$attempts[ $i ]['name']          = '';
 			}
 			update_post_meta( $id, '_shashura_attempts', wp_slash( $attempts ) );
 			delete_post_meta( $id, '_shashura_pending' );
@@ -1503,6 +1532,40 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	}
 
 	private function render_wait( $ctx, $a ) {
+		$status_url = $this->url( 'shashura_status', $ctx['token'], array( '_shasmomo_nonce' => wp_create_nonce( 'shasmomo_' . $ctx['token'] ) ) );
+		$return_url = $this->url( 'payment_return', $ctx['token'] );
+		$retry_url  = $this->url( 'shashura_pay', $ctx['token'] );
+		ob_start();
+		?>
+		<div id="wait">
+			<h1><?php esc_html_e( 'Approve on your phone', 'shashura-mobile-money-for-camptix' ); ?></h1>
+			<p class="muted"><?php
+				printf(
+					/* translators: 1: network, 2: masked number, 3: amount */
+					esc_html__( 'We sent a %1$s request to %2$s for %3$s. Enter your PIN on your phone to approve it.', 'shashura-mobile-money-for-camptix' ),
+					esc_html( 'AIRTEL' === $a['network'] ? 'Airtel Money' : 'MTN Mobile Money' ),
+					'<strong>' . esc_html( $this->masked( $a ) ) . '</strong>',
+					'<strong>' . esc_html( 'UGX ' . number_format_i18n( $a['amount'] ) ) . '</strong>'
+				);
+			?></p>
+			<div class="spin" aria-hidden="true"></div>
+			<p class="muted center" id="msg" aria-live="polite"><?php esc_html_e( 'Waiting for confirmation…', 'shashura-mobile-money-for-camptix' ); ?></p>
+			<noscript><p class="center"><a class="btn" href="<?php echo esc_url( $return_url ); ?>"><?php esc_html_e( 'I have approved it', 'shashura-mobile-money-for-camptix' ); ?></a></p></noscript>
+			<a class="link" id="retry" hidden href="<?php echo esc_url( $retry_url ); ?>"><?php esc_html_e( 'No prompt? Send a new request', 'shashura-mobile-money-for-camptix' ); ?></a>
+			<?php $this->cancel_link( $ctx ); ?>
+		</div>
+		<div id="done" hidden>
+			<div class="ok" aria-hidden="true">&#10003;</div>
+			<h1 class="center"><?php esc_html_e( 'Payment received', 'shashura-mobile-money-for-camptix' ); ?></h1>
+			<p class="muted center"><?php esc_html_e( 'Thank you. Taking you to your tickets…', 'shashura-mobile-money-for-camptix' ); ?></p>
+			<dl class="det" id="det"></dl>
+		</div>
+		<?php
+		// Data for assets/js/checkout.js's poller — read by render_page() via
+		// $this->wait_script_data, since the script itself is enqueued there
+		// (after this method's output buffer is already captured).
+		$this->wait_script_data = array(
+			'statusUrl' => $status_url,
 		$elapsed = max( 0, time() - (int) $a['created'] );
 		$script  = array(
 			'screen'    => 'wait',
