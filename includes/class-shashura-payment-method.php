@@ -649,7 +649,9 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			return $camptix->payment_result( $token, $result, $data, false );
 		}
 		add_filter( 'wp_redirect', '__return_false', 999 );
-		return $camptix->payment_result( $token, $result, $data );
+		$out = $camptix->payment_result( $token, $result, $data );
+		remove_filter( 'wp_redirect', '__return_false', 999 );
+		return $out;
 	}
 
 	/* ==================================================================
