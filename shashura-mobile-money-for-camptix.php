@@ -31,7 +31,7 @@ add_action( 'camptix_load_addons', function () {
 		return;
 	}
 	require_once SHASMOMO_DIR . 'includes/class-shashura-payment-method.php';
-	camptix_register_addon( 'CampTix_Payment_Method_Shashura' );
+	camptix_register_addon( 'Shasmomo_Payment_Method' );
 } );
 
 add_action( 'admin_notices', function () {
