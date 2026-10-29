@@ -9,6 +9,7 @@
  *  GET  /kyc/{msisdn}                                     -> data.name, data.network, data.msisdn
  *  POST /requestToPay    {msisdn, amount, reference}      -> 202, data.tid
  *  GET  /enquiry/{ref}                                    -> data.state PENDING | TS | TF, data.amount, data.external_ref
+ *  POST /refund          {tid, amount, reason, send_to_customer} -> data.amount_refunded, data.fully_refunded
  *  Webhook  POST {event, environment, tid, external_ref, type, status, amount, ...}
  *           X-Shashura-Signature = hex HMAC-SHA256(raw body, app webhook secret)
  *
@@ -132,6 +133,52 @@ class Shasmomo_API {
 			'external_ref' => isset( $data['external_ref'] ) ? (string) $data['external_ref'] : '',
 			'tid'          => isset( $data['tid'] ) ? sanitize_text_field( (string) $data['tid'] ) : '',
 			'network_ref'  => isset( $data['network_ref'] ) ? sanitize_text_field( (string) $data['network_ref'] ) : '',
+		);
+	}
+
+	/**
+	 * Reverse a settled collection. Only the principal the merchant received is ever
+	 * reversed — Shashura's processing fee is kept, on a full or partial refund.
+	 *
+	 * @param string     $tid              Our tid, or the reference the collection was made with.
+	 * @param float|null $amount           Amount to refund, in UGX (no decimals). Null refunds
+	 *                                     whatever remains — pass null for a full refund, or for
+	 *                                     the last call of a series of partial refunds that should
+	 *                                     clear the balance exactly.
+	 * @param string     $reason           Required by the gateway; never sent empty.
+	 * @param bool       $send_to_customer Whether to also push a real payout of the refunded
+	 *                                     amount back to the original msisdn.
+	 * @return array|WP_Error {
+	 *     amount_refunded, refunded_total, refundable_total, fully_refunded, refund_ref,
+	 *     payout: null|{ status: TS|PENDING|FAILED, ref, message? }
+	 * }
+	 */
+	public function refund( $tid, $amount, $reason, $send_to_customer = true ) {
+		$res = $this->authed( 'POST', '/refund', array(
+			'tid'              => (string) $tid,
+			'amount'           => null === $amount ? 0 : (float) $amount,
+			'reason'           => '' !== trim( (string) $reason ) ? (string) $reason : 'Refund requested.',
+			'send_to_customer' => (bool) $send_to_customer,
+		) );
+		if ( is_wp_error( $res ) ) {
+			return $res;
+		}
+		$data   = $this->data( $res );
+		$payout = null;
+		if ( isset( $data['payout'] ) && is_array( $data['payout'] ) ) {
+			$payout = array(
+				'status'  => isset( $data['payout']['status'] ) ? sanitize_text_field( (string) $data['payout']['status'] ) : '',
+				'ref'     => isset( $data['payout']['ref'] ) ? sanitize_text_field( (string) $data['payout']['ref'] ) : '',
+				'message' => isset( $data['payout']['message'] ) ? sanitize_text_field( (string) $data['payout']['message'] ) : '',
+			);
+		}
+		return array(
+			'amount_refunded'  => isset( $data['amount_refunded'] ) && is_numeric( $data['amount_refunded'] ) ? (float) $data['amount_refunded'] : 0.0,
+			'refunded_total'   => isset( $data['refunded_total'] ) && is_numeric( $data['refunded_total'] ) ? (float) $data['refunded_total'] : 0.0,
+			'refundable_total' => isset( $data['refundable_total'] ) && is_numeric( $data['refundable_total'] ) ? (float) $data['refundable_total'] : 0.0,
+			'fully_refunded'   => ! empty( $data['fully_refunded'] ),
+			'refund_ref'       => isset( $data['refund_ref'] ) ? sanitize_text_field( (string) $data['refund_ref'] ) : '',
+			'payout'           => $payout,
 		);
 	}
 

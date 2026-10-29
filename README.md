@@ -98,7 +98,7 @@ Because each app holds both a Sandbox and a Production credential pair, going li
 Uganda Shillings (UGX) only, matching Shashura's Mobile Money coverage.
 
 **Does this plugin process refunds?**
-Not automatically. The Shashura API currently exposes payouts but no refund endpoint. Issue the refund from the Shashura dashboard, then mark the attendee as refunded in CampTix.
+Yes. Use CampTix's own "Refund" button on the attendee screen — full, partial, and refund-all are all supported. Only the amount the organizer actually received is reversed; Shashura's processing fee is not refunded. The attendee gets the refunded amount back on the same phone number that paid.
 
 **What happens if a buyer closes the browser tab after approving the PIN prompt?**
 The payment still settles. Shashura's webhook, and CampTix's own timeout check on CampTix 2.x, both ask Shashura directly whether the order was paid, independently of whether the buyer's browser is still open.

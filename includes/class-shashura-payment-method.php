@@ -33,9 +33,9 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	public $description          = 'Pay with MTN or Airtel Mobile Money via Shashura.';
 	public $supported_currencies = array( 'UGX' );
 	public $supported_features   = array(
-		'refund-single'  => false,
-		'refund-all'     => false,
-		'refund-partial' => false,
+		'refund-single'  => true,
+		'refund-all'     => true,
+		'refund-partial' => true,
 	);
 
 	const MAX_ATTEMPTS       = 5;           // PIN prompts per order.
@@ -745,6 +745,106 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		$out = $camptix->payment_result( $token, $result, $data );
 		remove_filter( 'wp_redirect', '__return_false', 999 );
 		return $out;
+	}
+
+	/* ==================================================================
+	 * Refunds
+	 *
+	 * A CampTix refund means the attendee is made whole, not just an internal
+	 * ledger note, so send_to_customer is always true here: Shashura pushes a
+	 * real payout of the refunded amount back to the phone that paid. Only the
+	 * principal ever moves — Shashura keeps its processing fee, same as every
+	 * other refund surface on the gateway.
+	 * ================================================================ */
+
+	/**
+	 * Full, single refund of an order — CampTix's "Refund" button.
+	 *
+	 * @param string $payment_token
+	 * @return int CampTix_Plugin::PAYMENT_STATUS_REFUNDED|PAYMENT_STATUS_REFUND_FAILED
+	 */
+	public function payment_refund( $payment_token ) {
+		$data = $this->send_refund_request( $payment_token );
+		return $this->report( $payment_token, $data['status'], $data, true );
+	}
+
+	/**
+	 * Partial refund, leaving the rest of the order paid — CampTix's per-ticket refund.
+	 *
+	 * @param string $payment_token
+	 * @param float  $amount            Amount to refund, in whole UGX.
+	 * @param bool   $refunds_remainder Whether this refunds everything still paid on the order.
+	 * @return array { status, refund_transaction_id, refund_transaction_details }
+	 */
+	public function payment_refund_partial( $payment_token, $amount, $refunds_remainder ) {
+		return $this->send_refund_request( $payment_token, $refunds_remainder ? null : $amount );
+	}
+
+	/**
+	 * Ask Shashura to reverse the order's collection.
+	 *
+	 * @param string     $payment_token
+	 * @param float|null $amount Amount to refund; null refunds whatever remains.
+	 * @return array { status, transaction_id, refund_transaction_id, refund_transaction_details }
+	 */
+	public function send_refund_request( $payment_token, $amount = null ) {
+		global $camptix;
+
+		$result = array(
+			'status'                     => CampTix_Plugin::PAYMENT_STATUS_REFUND_FAILED,
+			'transaction_id'             => '',
+			'refund_transaction_id'      => '',
+			'refund_transaction_details' => array(),
+		);
+
+		$order          = $this->get_order( $payment_token );
+		$transaction_id = $camptix->get_post_meta_from_payment_token( $payment_token, 'tix_transaction_id' );
+
+		if ( empty( $order ) || ! $transaction_id ) {
+			$camptix->log( 'Could not refund: no order or transaction id for this payment token.', null, array( 'payment_token' => $payment_token ), 'refund' );
+			return $result;
+		}
+
+		// Blank on refund-all / cron-triggered refunds, which send no POST body.
+		$reason = isset( $_POST['tix_refund_request_reason'] ) ? sanitize_text_field( wp_unslash( $_POST['tix_refund_request_reason'] ) ) : '';
+		if ( '' === $reason ) {
+			$reason = sprintf( 'Refund via %s', wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
+		}
+
+		$refund = $this->api()->refund( $transaction_id, $amount, $reason, true );
+
+		if ( is_wp_error( $refund ) ) {
+			$result['refund_transaction_details'] = array(
+				'error' => $refund->get_error_message(),
+				'code'  => Shasmomo_API::error_code( $refund ),
+			);
+			$camptix->log( 'Shashura refund failed: ' . $refund->get_error_message(), isset( $order['attendee_id'] ) ? $order['attendee_id'] : null, $result, 'refund' );
+			return $result;
+		}
+
+		$result['status']                     = CampTix_Plugin::PAYMENT_STATUS_REFUNDED;
+		$result['transaction_id']             = $transaction_id;
+		$result['refund_transaction_id']      = '' !== $refund['refund_ref'] ? $refund['refund_ref'] : $transaction_id;
+		$result['refund_transaction_details'] = array( 'raw' => $refund );
+
+		// The ledger reversal above always succeeds before Shashura attempts the real
+		// payout, so a failed payout does NOT undo it — CampTix is correctly told this
+		// refund succeeded. But the attendee's phone never actually received the money,
+		// so this needs a loud, actionable log entry rather than silently looking fine.
+		if ( $refund['payout'] && 'FAILED' === $refund['payout']['status'] ) {
+			$camptix->log(
+				sprintf(
+					'Refund recorded, but the real payout to the attendee\'s phone failed (%s). The merchant wallet was still debited — retry the payout manually from the Shashura merchant dashboard for %s.',
+					'' !== $refund['payout']['message'] ? $refund['payout']['message'] : 'provider error',
+					$refund['refund_ref']
+				),
+				isset( $order['attendee_id'] ) ? $order['attendee_id'] : null,
+				$refund,
+				'refund'
+			);
+		}
+
+		return $result;
 	}
 
 	/* ==================================================================

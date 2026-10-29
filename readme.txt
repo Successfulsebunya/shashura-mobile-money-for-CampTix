@@ -80,7 +80,7 @@ Uganda Shillings (UGX) only, matching Shashura's Mobile Money coverage.
 
 = Does this plugin process refunds? =
 
-Not automatically. The Shashura API currently exposes payouts but no refund endpoint. Issue the refund from the Shashura dashboard, then mark the attendee as refunded in CampTix.
+Yes. Use CampTix's own "Refund" button on the attendee screen — full, partial, and refund-all are all supported. Only the amount the organizer actually received is reversed; Shashura's processing fee is not refunded. The attendee gets the refunded amount back on the same phone number that paid.
 
 = What happens if a buyer closes the browser tab after approving the PIN prompt? =
 
@@ -122,6 +122,7 @@ A Shashura merchant account, with an app's Client ID and Client Secret, is requi
 == Changelog ==
 
 = 1.0.2 =
+* Added refund support: CampTix's "Refund" button (single, partial, and refund-all) now works through the Shashura API. The attendee's money is sent back to the phone that paid; Shashura's processing fee is not refunded.
 * The "Powered by Shashura" credit link on buyer-facing payment pages is now off by default and only shown if the site administrator explicitly turns it on in the payment settings.
 * Renamed internal functions, classes, defines and filters from the generic "ctx_shashura"/"CTX_Shashura" prefix to a more distinctive "shasmomo"/"Shasmomo" prefix, to avoid clashing with other plugins.
 * Fixed the plugin header's License field to a format reliably recognised by the Plugin Check tool.
