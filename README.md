@@ -141,7 +141,7 @@ Against each paid order, this plugin stores the payer's registered name, a maske
 | `shasmomo_client_ip` | n/a | Overrides the IP address used for rate limiting. |
 | `shasmomo_accent_color` | `#1d4ed8` | Accent colour used on the payment pages. Button text switches between white and near-black to stay readable. |
 | `shasmomo_merchant_logo` | Site Icon, then Custom Logo | Image shown in the payment page header. |
-| `shasmomo_network_logo` | empty | Image URL for a network badge (`mtn` or `airtel`), for sites with permission to use the official logos. |
+| `shasmomo_network_logo` | bundled MTN MoMo / Airtel Money logo | Image URL for a network logo (`mtn` or `airtel`). Return an empty string to show the coloured badge with the network name instead. |
 | `shasmomo_template` | plugin's `templates/` | Path of a payment page template. Themes can also override one by copying it to `your-theme/shashura-mobile-money-for-camptix/`. |
 | `shasmomo_http_timeout` | `25` | Timeout, in seconds, for calls to the Shashura API. |
 | `shasmomo_base_url` | `https://shashura.com/api/v1` | Overrides the API base URL on top of the settings field. HTTPS is enforced except for local or loopback addresses. |
@@ -155,6 +155,8 @@ For help with a Shashura account, API credentials, or a specific payment, contac
 Developed and maintained by [Cipherwave Software Limited](https://shashura.com).
 
 Contributors: Moses Ssebuwufu ([ssebuwufumoses](https://profiles.wordpress.org/ssebuwufumoses/) on WordPress.org, [@ssebuwufumoses](https://github.com/ssebuwufumoses) on GitHub).
+
+The MTN MoMo and Airtel Money logos in `assets/images` are trademarks of MTN and Airtel.
 
 ## License
 

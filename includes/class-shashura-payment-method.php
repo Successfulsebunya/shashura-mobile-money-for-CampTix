@@ -1557,9 +1557,9 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	}
 
 	/**
-	 * Supported networks. No logo files are bundled: the pages show a coloured badge with the
-	 * network name. A site with permission to use the official logos can supply them through
-	 * the shasmomo_network_logo filter (image URL, by network key).
+	 * Supported networks, with the MTN MoMo and Airtel Money logos bundled in assets/images.
+	 * The shasmomo_network_logo filter can swap a logo for another image URL, or return ''
+	 * to show the coloured badge with the network name instead.
 	 *
 	 * @return array[] key => { key, label, short, logo }
 	 */
@@ -1577,7 +1577,8 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			),
 		);
 		foreach ( $networks as $key => $network ) {
-			$networks[ $key ]['logo'] = esc_url_raw( (string) apply_filters( 'shasmomo_network_logo', '', $key ) );
+			$default                  = SHASMOMO_URL . 'assets/images/' . ( 'mtn' === $key ? 'mtn-momo.png' : 'airtel-money.png' );
+			$networks[ $key ]['logo'] = esc_url_raw( (string) apply_filters( 'shasmomo_network_logo', $default, $key ) );
 		}
 		return $networks;
 	}
