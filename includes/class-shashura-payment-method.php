@@ -56,9 +56,6 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 
 	protected $options = array();
 
-	/** Set by render_wait() before render_page(); localized onto checkout.js's poller. */
-	private $wait_script_data = array();
-
 	/** Declared here too: CampTix 1.x's base class doesn't, which is deprecated on PHP 8.2+. */
 	public $camptix_options;
 
@@ -1391,16 +1388,9 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 					'group_label' => __( 'Mobile Money payments', 'shashura-mobile-money-for-camptix' ),
 					'item_id'     => 'shashura-' . $id . '-' . $a['ref'],
 					'data'        => array(
-						array( 'name' => 'Reference', 'value' => $a['ref'] ),
-						array( 'name' => 'Date', 'value' => gmdate( 'Y-m-d H:i', (int) $a['created'] ) . ' UTC' ),
-						array( 'name' => 'Mobile number', 'value' => ! empty( $a['msisdn'] ) ? $a['msisdn'] : $this->masked( $a ) ),
-						array( 'name' => 'Registered name', 'value' => $a['name'] ),
-						array( 'name' => 'Network', 'value' => $a['network'] ),
-						array( 'name' => 'Amount (UGX)', 'value' => (string) $a['amount'] ),
-						array( 'name' => 'Status', 'value' => $a['status'] ),
 						array( 'name' => __( 'Reference', 'shashura-mobile-money-for-camptix' ), 'value' => $a['ref'] ),
 						array( 'name' => __( 'Date', 'shashura-mobile-money-for-camptix' ), 'value' => gmdate( 'Y-m-d H:i', (int) $a['created'] ) . ' UTC' ),
-						array( 'name' => __( 'Mobile number', 'shashura-mobile-money-for-camptix' ), 'value' => $a['msisdn'] ),
+						array( 'name' => __( 'Mobile number', 'shashura-mobile-money-for-camptix' ), 'value' => ! empty( $a['msisdn'] ) ? $a['msisdn'] : $this->masked( $a ) ),
 						array( 'name' => __( 'Registered name', 'shashura-mobile-money-for-camptix' ), 'value' => $a['name'] ),
 						array( 'name' => __( 'Network', 'shashura-mobile-money-for-camptix' ), 'value' => $a['network'] ),
 						array( 'name' => __( 'Amount (UGX)', 'shashura-mobile-money-for-camptix' ), 'value' => (string) $a['amount'] ),
@@ -1574,49 +1564,6 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	}
 
 	private function render_phone( $ctx, $error = '', $notice = '' ) {
-		$prefill = isset( $ctx['pending']['msisdn'] ) ? '0' . substr( $ctx['pending']['msisdn'], 3 ) : '';
-		$this->render_page( __( 'Pay with Mobile Money', 'shashura-mobile-money-for-camptix' ), function () use ( $ctx, $error, $notice, $prefill ) {
-			?>
-			<h1><?php esc_html_e( 'Pay with Mobile Money', 'shashura-mobile-money-for-camptix' ); ?></h1>
-			<p class="muted"><?php echo esc_html( get_bloginfo( 'name' ) ); ?></p>
-			<p class="total"><?php echo esc_html( $this->amount_text( $ctx ) ); ?></p>
-			<?php if ( $notice ) : ?><div class="note"><?php echo esc_html( $notice ); ?></div><?php endif; ?>
-			<form method="post" action="<?php echo esc_url( $this->url( 'shashura_pay', $ctx['token'] ) ); ?>">
-				<?php $this->nonce_field( $ctx ); ?>
-				<input type="hidden" name="step" value="lookup">
-				<label for="phone"><?php esc_html_e( 'MTN or Airtel number', 'shashura-mobile-money-for-camptix' ); ?></label>
-				<input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="0772 123 456" value="<?php echo esc_attr( $prefill ); ?>" required>
-				<?php if ( $error ) : ?><div class="err" role="alert"><?php echo esc_html( $error ); ?></div><?php endif; ?>
-				<button type="submit"><?php esc_html_e( 'Verify number', 'shashura-mobile-money-for-camptix' ); ?></button>
-			</form>
-			<p class="fine"><?php esc_html_e( 'We check the number with your mobile network and show you the registered name before anything is charged.', 'shashura-mobile-money-for-camptix' ); ?></p>
-			<?php $this->cancel_link( $ctx ); ?>
-			<?php
-		}, $error ? 422 : 200 );
-	}
-
-	private function render_confirm( $ctx, $p, $error = '' ) {
-		$this->render_page( __( 'Confirm payment', 'shashura-mobile-money-for-camptix' ), function () use ( $ctx, $p, $error ) {
-			?>
-			<h1><?php esc_html_e( 'Confirm payment details', 'shashura-mobile-money-for-camptix' ); ?></h1>
-			<p class="muted"><?php esc_html_e( 'Check that this is the account you want to pay from.', 'shashura-mobile-money-for-camptix' ); ?></p>
-			<dl class="det">
-				<?php if ( '' !== $p['name'] ) : ?>
-					<dt><?php esc_html_e( 'Account name', 'shashura-mobile-money-for-camptix' ); ?></dt><dd><?php echo esc_html( $this->display_name( $p['name'] ) ); ?></dd>
-				<?php endif; ?>
-				<dt><?php esc_html_e( 'Mobile number', 'shashura-mobile-money-for-camptix' ); ?></dt><dd><?php echo esc_html( Shasmomo_Phone::pretty( $p['msisdn'] ) ); ?></dd>
-				<dt><?php esc_html_e( 'Network', 'shashura-mobile-money-for-camptix' ); ?></dt><dd><?php echo esc_html( 'AIRTEL' === $p['network'] ? 'Airtel Money' : 'MTN Mobile Money' ); ?></dd>
-				<dt><?php esc_html_e( 'Amount', 'shashura-mobile-money-for-camptix' ); ?></dt><dd class="amt"><?php echo esc_html( $this->amount_text( $ctx ) ); ?></dd>
-			</dl>
-			<?php if ( $error ) : ?><div class="err" role="alert"><?php echo esc_html( $error ); ?></div><?php endif; ?>
-			<form method="post" action="<?php echo esc_url( $this->url( 'shashura_pay', $ctx['token'] ) ); ?>">
-				<?php $this->nonce_field( $ctx ); ?>
-				<input type="hidden" name="step" value="confirm">
-				<button type="submit"><?php esc_html_e( 'Confirm and send payment request', 'shashura-mobile-money-for-camptix' ); ?></button>
-			</form>
-			<a class="link" href="<?php echo esc_url( $this->url( 'shashura_pay', $ctx['token'] ) ); ?>"><?php esc_html_e( 'Use a different number', 'shashura-mobile-money-for-camptix' ); ?></a>
-			<?php
-		} );
 		$this->render_page(
 			__( 'Pay with Mobile Money', 'shashura-mobile-money-for-camptix' ),
 			'phone',
@@ -1660,42 +1607,6 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	}
 
 	private function render_wait( $ctx, $a ) {
-		$status_url = $this->url( 'shashura_status', $ctx['token'], array( '_shasmomo_nonce' => wp_create_nonce( 'shasmomo_' . $ctx['token'] ) ) );
-		$return_url = $this->url( 'payment_return', $ctx['token'] );
-		$retry_url  = $this->url( 'shashura_pay', $ctx['token'] );
-		// Data for assets/js/checkout.js's poller, localized by render_page() where the
-		// script is enqueued.
-		ob_start();
-		?>
-		<div id="wait">
-			<h1><?php esc_html_e( 'Approve on your phone', 'shashura-mobile-money-for-camptix' ); ?></h1>
-			<p class="muted"><?php
-				printf(
-					/* translators: 1: network, 2: masked number, 3: amount */
-					esc_html__( 'We sent a %1$s request to %2$s for %3$s. Enter your PIN on your phone to approve it.', 'shashura-mobile-money-for-camptix' ),
-					esc_html( 'AIRTEL' === $a['network'] ? 'Airtel Money' : 'MTN Mobile Money' ),
-					'<strong>' . esc_html( $this->masked( $a ) ) . '</strong>',
-					'<strong>' . esc_html( 'UGX ' . number_format_i18n( $a['amount'] ) ) . '</strong>'
-				);
-			?></p>
-			<div class="spin" aria-hidden="true"></div>
-			<p class="muted center" id="msg" aria-live="polite"><?php esc_html_e( 'Waiting for confirmation…', 'shashura-mobile-money-for-camptix' ); ?></p>
-			<noscript><p class="center"><a class="btn" href="<?php echo esc_url( $return_url ); ?>"><?php esc_html_e( 'I have approved it', 'shashura-mobile-money-for-camptix' ); ?></a></p></noscript>
-			<a class="link" id="retry" hidden href="<?php echo esc_url( $retry_url ); ?>"><?php esc_html_e( 'No prompt? Send a new request', 'shashura-mobile-money-for-camptix' ); ?></a>
-			<?php $this->cancel_link( $ctx ); ?>
-		</div>
-		<div id="done" hidden>
-			<div class="ok" aria-hidden="true">&#10003;</div>
-			<h1 class="center"><?php esc_html_e( 'Payment received', 'shashura-mobile-money-for-camptix' ); ?></h1>
-			<p class="muted center"><?php esc_html_e( 'Thank you. Taking you to your tickets…', 'shashura-mobile-money-for-camptix' ); ?></p>
-			<dl class="det" id="det"></dl>
-		</div>
-		<?php
-		// Data for assets/js/checkout.js's poller — read by render_page() via
-		// $this->wait_script_data, since the script itself is enqueued there
-		// (after this method's output buffer is already captured).
-		$this->wait_script_data = array(
-			'statusUrl' => $status_url,
 		$elapsed = max( 0, time() - (int) $a['created'] );
 		$script  = array(
 			'screen'    => 'wait',
@@ -1713,40 +1624,13 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 				'expired'   => __( 'No approval yet. Resend the prompt.', 'shashura-mobile-money-for-camptix' ),
 			),
 		);
-		$this->render_page( __( 'Approve payment', 'shashura-mobile-money-for-camptix' ), function () use ( $ctx, $a, $return_url, $retry_url ) {
-			?>
-			<div id="wait">
-				<h1><?php esc_html_e( 'Approve on your phone', 'shashura-mobile-money-for-camptix' ); ?></h1>
-				<p class="muted"><?php
-					printf(
-						/* translators: 1: network, 2: masked number, 3: amount */
-						esc_html__( 'We sent a %1$s request to %2$s for %3$s. Enter your PIN on your phone to approve it.', 'shashura-mobile-money-for-camptix' ),
-						esc_html( 'AIRTEL' === $a['network'] ? 'Airtel Money' : 'MTN Mobile Money' ),
-						'<strong>' . esc_html( Shasmomo_Phone::mask( $a['msisdn'] ) ) . '</strong>',
-						'<strong>' . esc_html( 'UGX ' . number_format_i18n( $a['amount'] ) ) . '</strong>'
-					);
-				?></p>
-				<div class="spin" aria-hidden="true"></div>
-				<p class="muted center" id="msg" aria-live="polite"><?php esc_html_e( 'Waiting for confirmation…', 'shashura-mobile-money-for-camptix' ); ?></p>
-				<noscript><p class="center"><a class="btn" href="<?php echo esc_url( $return_url ); ?>"><?php esc_html_e( 'I have approved it', 'shashura-mobile-money-for-camptix' ); ?></a></p></noscript>
-				<a class="link" id="retry" hidden href="<?php echo esc_url( $retry_url ); ?>"><?php esc_html_e( 'No prompt? Send a new request', 'shashura-mobile-money-for-camptix' ); ?></a>
-				<?php $this->cancel_link( $ctx ); ?>
-			</div>
-			<div id="done" hidden>
-				<div class="ok" aria-hidden="true">&#10003;</div>
-				<h1 class="center"><?php esc_html_e( 'Payment received', 'shashura-mobile-money-for-camptix' ); ?></h1>
-				<p class="muted center"><?php esc_html_e( 'Thank you. Taking you to your tickets…', 'shashura-mobile-money-for-camptix' ); ?></p>
-				<dl class="det" id="det"></dl>
-			</div>
-			<?php
-		} );
 
 		$this->render_page(
 			__( 'Approve payment', 'shashura-mobile-money-for-camptix' ),
 			'wait',
 			array(
 				'network'    => $this->network( $a['network'] ),
-				'phone'      => Shasmomo_Phone::mask( $a['msisdn'] ),
+				'phone'      => $this->masked( $a ),
 				'amount'     => 'UGX ' . number_format_i18n( $a['amount'] ),
 				'return_url' => $this->url( 'payment_return', $ctx['token'] ),
 				'retry_url'  => $this->url( 'shashura_pay', $ctx['token'] ),
@@ -1760,19 +1644,6 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 
 	private function render_message( $title, $text, $status = 200, $home = false ) {
 		global $camptix;
-		$this->render_page( $title, function () use ( $camptix, $title, $text, $home ) {
-			?>
-			<h1><?php echo esc_html( $title ); ?></h1>
-			<p class="muted"><?php echo esc_html( $text ); ?></p>
-			<?php if ( $home ) : ?><a class="btn" href="<?php echo esc_url( $camptix->get_tickets_url() ); ?>"><?php esc_html_e( 'Back to tickets', 'shashura-mobile-money-for-camptix' ); ?></a><?php endif; ?>
-			<?php
-		}, $status );
-	}
-
-	/**
-	 * @param callable $body Prints the page content. Each part escapes its own output.
-	 */
-	private function render_page( $title, callable $body, $status = 200 ) {
 		$this->render_page(
 			$title,
 			'message',
@@ -1807,35 +1678,6 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		$accent = sanitize_hex_color( (string) apply_filters( 'shasmomo_accent_color', '#1d4ed8' ) );
 		$accent = $accent ? $accent : '#1d4ed8';
 
-		// This page is a standalone HTML document (no get_header()/wp_head()), so
-		// assets are enqueued normally — for proper URLs, versioning and dependency
-		// handling — then printed directly by handle rather than via wp_head()/
-		// wp_footer(), which would also pull in every other plugin's and the
-		// theme's own head/footer output onto this minimal, noindex payment page.
-		wp_enqueue_style( 'shasmomo-checkout', SHASMOMO_URL . 'assets/css/checkout.css', array(), SHASMOMO_VERSION );
-		wp_add_inline_style( 'shasmomo-checkout', ':root{--a:' . esc_attr( $accent ) . '}' );
-
-		wp_enqueue_script( 'shasmomo-checkout', SHASMOMO_URL . 'assets/js/checkout.js', array(), SHASMOMO_VERSION, true );
-		if ( ! empty( $this->wait_script_data ) ) {
-			wp_localize_script( 'shasmomo-checkout', 'shasmomoWait', $this->wait_script_data );
-		}
-		?><!doctype html>
-<html <?php language_attributes(); ?>>
-<head>
-<meta charset="<?php bloginfo( 'charset' ); ?>">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<title><?php echo esc_html( $title . ' – ' . get_bloginfo( 'name' ) ); ?></title>
-<?php wp_print_styles( array( 'shasmomo-checkout' ) ); ?>
-</head>
-<body><main class="card"><?php call_user_func( $body ); ?></main>
-<?php if ( ! empty( $this->options['show_branding'] ) ) : ?>
-<p class="poweredby"><?php esc_html_e( 'Powered by', 'shashura-mobile-money-for-camptix' ); ?> <a href="https://shashura.com" target="_blank" rel="noopener noreferrer">Shashura</a></p>
-<?php endif; ?>
-<?php wp_print_scripts( array( 'shasmomo-checkout' ) ); ?>
-</body>
-</html>
-		<?php
 		wp_enqueue_style( 'shasmomo-checkout', SHASMOMO_URL . 'assets/css/checkout.css', array(), $this->asset_version( 'assets/css/checkout.css' ) );
 		wp_add_inline_style( 'shasmomo-checkout', ':root{--sc-accent:' . $accent . ';--sc-accent-ink:' . $this->readable_ink( $accent ) . ';}' );
 		wp_enqueue_script( 'shasmomo-checkout', SHASMOMO_URL . 'assets/js/checkout.js', array(), $this->asset_version( 'assets/js/checkout.js' ), true );
