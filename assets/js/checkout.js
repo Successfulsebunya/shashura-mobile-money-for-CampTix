@@ -178,7 +178,7 @@
 				}
 				if ( ( 'failed' === data.state || 'closed' === data.state ) && data.next ) {
 					finished = true;
-					message( labels.failed );
+					message( data.message || labels.failed );
 					return setTimeout( function () {
 						window.location.href = data.next;
 					}, 1500 );

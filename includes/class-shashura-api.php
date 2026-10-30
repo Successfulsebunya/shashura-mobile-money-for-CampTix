@@ -8,7 +8,8 @@
  *  POST /auth            {client_id, client_secret}       -> data.access_token (1 hour)
  *  GET  /kyc/{msisdn}                                     -> data.name, data.network, data.msisdn
  *  POST /requestToPay    {msisdn, amount, reference}      -> 202, data.tid
- *  GET  /enquiry/{ref}                                    -> data.state PENDING | TS | TF, data.amount, data.external_ref
+ *  GET  /enquiry/{ref}                                    -> data.state PENDING | TS | TF, data.amount, data.external_ref,
+ *                                                           data.failure { code, message } on TF
  *  POST /refund          {tid, amount, reason, send_to_customer} -> data.amount_refunded, data.fully_refunded
  *  Webhook  POST {event, environment, tid, external_ref, type, status, amount, ...}
  *           X-Shashura-Signature = hex HMAC-SHA256(raw body, app webhook secret)
@@ -123,8 +124,9 @@ class Shasmomo_API {
 		if ( is_wp_error( $res ) ) {
 			return $res;
 		}
-		$data = $this->data( $res );
-		$raw  = isset( $data['state'] ) && is_scalar( $data['state'] ) ? strtoupper( trim( (string) $data['state'] ) ) : '';
+		$data    = $this->data( $res );
+		$raw     = isset( $data['state'] ) && is_scalar( $data['state'] ) ? strtoupper( trim( (string) $data['state'] ) ) : '';
+		$failure = isset( $data['failure'] ) && is_array( $data['failure'] ) ? $data['failure'] : array();
 
 		return array(
 			'state'        => isset( self::STATES[ $raw ] ) ? self::STATES[ $raw ] : 'pending',
@@ -133,6 +135,9 @@ class Shasmomo_API {
 			'external_ref' => isset( $data['external_ref'] ) ? (string) $data['external_ref'] : '',
 			'tid'          => isset( $data['tid'] ) ? sanitize_text_field( (string) $data['tid'] ) : '',
 			'network_ref'  => isset( $data['network_ref'] ) ? sanitize_text_field( (string) $data['network_ref'] ) : '',
+			// Only sent on TF, e.g. INSUFFICIENT_FUNDS.
+			'failure_code' => isset( $failure['code'] ) && is_scalar( $failure['code'] ) ? preg_replace( '/[^A-Z0-9_]/', '', strtoupper( (string) $failure['code'] ) ) : '',
+			'failure_text' => isset( $failure['message'] ) && is_scalar( $failure['message'] ) ? sanitize_text_field( (string) $failure['message'] ) : '',
 		);
 	}
 
