@@ -176,9 +176,9 @@
 				if ( 'paid' === data.state && data.next ) {
 					return done( data );
 				}
-				if ( ( 'failed' === data.state || 'closed' === data.state ) && data.next ) {
+				if ( ( 'failed' === data.state || 'closed' === data.state || 'reconciliation' === data.state ) && data.next ) {
 					finished = true;
-					message( data.message || labels.failed );
+					message( 'reconciliation' === data.state ? labels.reconciliation : ( data.message || labels.failed ) );
 					return setTimeout( function () {
 						window.location.href = data.next;
 					}, 1500 );

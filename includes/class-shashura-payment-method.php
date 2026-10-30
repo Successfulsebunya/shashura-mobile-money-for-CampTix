@@ -633,6 +633,18 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		if ( $changed ) {
 			$this->save( $ctx, '_shashura_attempts', $attempts );
 		}
+		// Persist evidence before notification; final attempts are not re-enquired on replay.
+		foreach ( $attempts as $i => $a ) {
+			if ( 'mismatch' === $a['status'] && empty( $a['mismatch_alerted'] ) ) {
+				$attempts[ $i ]['mismatch_alerted'] = time();
+				$this->save( $ctx, '_shashura_attempts', $attempts );
+				wp_mail(
+					get_option( 'admin_email' ),
+					'CampTix Mobile Money payment needs reconciliation',
+					sprintf( "Payment %s (transaction %s) collected UGX %d; expected UGX %d. Do not ask the buyer to pay again. Reconcile or refund in the gateway dashboard. Order: %s", $a['ref'], $a['tid'], $a['paid_amount'], $ctx['total'], admin_url( 'post.php?post=' . $ctx['first'] . '&action=edit' ) )
+				);
+			}
+		}
 
 		$paid = array_values( array_filter( $attempts, function ( $a ) {
 			return 'paid' === $a['status'];
@@ -651,7 +663,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	 * can never overwrite a payment another request is recording at the same moment.
 	 *
 	 * @param callable|null $otherwise fn( $ctx, $rec, $state ) called under the lock when not paid.
-	 * @return string paid | pending | failed | none | busy
+	 * @return string paid | reconciliation | pending | failed | none | busy
 	 */
 	private function settle( $ctx, $interactive, $force = false, $otherwise = null ) {
 		$lock = $this->lock( $ctx['token'] );
@@ -672,6 +684,11 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			return 'paid';
 		}
 
+		if ( $this->needs_reconciliation( $rec['attempts'] ) ) {
+			$this->unlock( $lock );
+			return 'reconciliation'; // Never invoke unpaid cancellation/failure callbacks.
+		}
+
 		if ( ! $rec['latest'] ) {
 			$state = 'none';
 		} else {
@@ -687,7 +704,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	/** True when every attempt has a final, unpaid answer from Shashura. */
 	private function all_failed( $rec ) {
 		foreach ( $rec['attempts'] as $a ) {
-			if ( ! in_array( $a['status'], array( 'failed', 'rejected', 'mismatch' ), true ) ) {
+			if ( ! in_array( $a['status'], array( 'failed', 'rejected' ), true ) ) {
 				return false;
 			}
 		}
@@ -927,8 +944,29 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		}
 	}
 
+	/** A collected amount mismatch is not a declined payment. */
+	private function needs_reconciliation( $attempts ) {
+		foreach ( $attempts as $a ) {
+			if ( 'mismatch' === $a['status'] ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private function reconciliation_message() {
+		$this->render_message(
+			__( 'Payment needs reconciliation', 'shashura-mobile-money-for-camptix' ),
+			__( 'A payment was collected for a different amount. Please do not pay again. Contact the organiser to reconcile your payment or arrange a refund.', 'shashura-mobile-money-for-camptix' ),
+			200
+		);
+	}
+
 	/** Orders that are not drafts can't be paid again: send paid ones to their tickets. */
 	private function guard_draft( $ctx ) {
+		if ( $this->needs_reconciliation( $ctx['attempts'] ) && ! in_array( $ctx['status'], array( 'publish', 'refund' ), true ) ) {
+			$this->reconciliation_message();
+		}
 		if ( 'draft' === $ctx['status'] ) {
 			return;
 		}
@@ -1042,6 +1080,9 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 
 		// Anything already paid? Then complete instead of charging again.
 		$state = $this->settle( $ctx, true, true );
+		if ( 'reconciliation' === $state ) {
+			$this->reconciliation_message();
+		}
 		if ( 'busy' === $state ) {
 			wp_safe_redirect( $this->url( 'shashura_wait', $ctx['token'] ) );
 			die();
@@ -1054,6 +1095,10 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 
 		// Every limit is checked again here, under the lock, so parallel clicks can't slip past.
 		$ctx    = $this->load( $ctx['token'] );
+		if ( $ctx && $this->needs_reconciliation( $ctx['attempts'] ) ) {
+			$this->unlock( $lock );
+			$this->reconciliation_message();
+		}
 		$latest = $ctx['attempts'] ? end( $ctx['attempts'] ) : null;
 
 		if ( 'draft' !== $ctx['status'] ) {
@@ -1228,8 +1273,16 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 				$state = $this->settle( $ctx, false );
 			} elseif ( $open ) {
 				// CampTix 1.x: report what Shashura says; the return page records it.
-				$rec   = $this->reconcile( $ctx );
-				$state = $rec['paid'] ? 'paid' : ( $rec['latest'] && in_array( $rec['latest']['status'], array( 'failed', 'rejected', 'mismatch', 'lost' ), true ) ? 'failed' : 'pending' );
+				$lock = $this->lock( $ctx['token'] );
+				if ( ! $lock ) {
+					wp_send_json( array( 'state' => 'pending' ) );
+				}
+				try {
+					$rec = $this->reconcile( $this->load( $ctx['token'] ) );
+				} finally {
+					$this->unlock( $lock );
+				}
+				$state = $rec['paid'] ? 'paid' : ( $this->needs_reconciliation( $rec['attempts'] ) ? 'reconciliation' : ( $rec['latest'] && in_array( $rec['latest']['status'], array( 'failed', 'rejected', 'mismatch', 'lost' ), true ) ? 'failed' : 'pending' ) );
 			} else {
 				$state = 'closed';
 			}
@@ -1263,6 +1316,8 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			$out['next']    = count( $ctx['attempts'] ) < self::MAX_ATTEMPTS
 				? $this->url( 'shashura_pay', $ctx['token'], array( 'notice' => 'declined' ) )
 				: $this->url( 'payment_return', $ctx['token'] );
+		} elseif ( 'reconciliation' === $state ) {
+			$out['next'] = $this->url( 'payment_return', $ctx['token'] );
 		} elseif ( 'closed' === $state ) {
 			$out['next'] = $this->url( 'shashura_pay', $ctx['token'] );
 		}
@@ -1280,6 +1335,9 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			}
 		} );
 
+		if ( 'reconciliation' === $state ) {
+			$this->reconciliation_message();
+		}
 		if ( 'failed' === $state && count( $ctx['attempts'] ) >= self::MAX_ATTEMPTS ) {
 			$this->render_message(
 				__( 'Payment not confirmed yet', 'shashura-mobile-money-for-camptix' ),
@@ -1757,6 +1815,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 				'network'   => __( 'Network', 'shashura-mobile-money-for-camptix' ),
 				'amount'    => __( 'Amount', 'shashura-mobile-money-for-camptix' ),
 				'reference' => __( 'Reference', 'shashura-mobile-money-for-camptix' ),
+				'reconciliation' => __( 'Payment collected for a different amount. Do not pay again; contact the organiser.', 'shashura-mobile-money-for-camptix' ),
 				'failed'    => __( 'Declined or expired.', 'shashura-mobile-money-for-camptix' ),
 				'slow'      => __( 'Still waiting. Keep this page open.', 'shashura-mobile-money-for-camptix' ),
 				'expired'   => __( 'No approval yet. Resend the prompt.', 'shashura-mobile-money-for-camptix' ),
