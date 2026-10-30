@@ -2,10 +2,11 @@
 /**
  * Plugin Name:       Shashura Mobile Money for CampTix
  * Description:       Accept MTN and Airtel Mobile Money (Uganda) in CampTix through the Shashura gateway.
- * Version:           1.0.2
+ * Version:           1.0.3
  * Requires at least: 5.8
  * Requires PHP:      7.4
- * Author:            Cipherwave Software Limited
+ * Author:            Techdom Digital Solutions
+ * Author URI:        https://techdom.io
  * License:           GPLv2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       shashura-mobile-money-for-camptix
@@ -15,7 +16,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SHASMOMO_VERSION', '1.0.2' );
+define( 'SHASMOMO_VERSION', '1.0.3' );
 define( 'SHASMOMO_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SHASMOMO_URL', plugin_dir_url( __FILE__ ) );
 

@@ -1,10 +1,10 @@
 === Shashura Mobile Money for CampTix ===
-Contributors: cipherwave
-Tags: camptix, mobile money, mtn, airtel, uganda
+Contributors: cipherwave, ssebuwufumoses
+Tags: camptix, shashura, mobile money, mtn, airtel, uganda
 Requires at least: 5.8
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,7 +12,7 @@ Accept MTN and Airtel Mobile Money for CampTix ticket sales in Uganda, settled t
 
 == Description ==
 
-Shashura Mobile Money for CampTix adds MTN and Airtel Mobile Money as a payment option for CampTix, the WordPress event ticketing plugin used by WordCamp and community events. It is built for organisers selling tickets in Uganda who need a payment method their attendees already use day to day. This plugin is developed and maintained by Cipherwave Software Limited (Shashura) and is not affiliated with, or endorsed by, the CampTix project.
+Shashura Mobile Money for CampTix adds MTN and Airtel Mobile Money as a payment option for CampTix, the WordPress event ticketing plugin used by WordCamp and community events. It is built for organisers selling tickets in Uganda who need a payment method their attendees already use day to day. This plugin is developed and maintained by Techdom Digital Solutions and is not affiliated with, or endorsed by, the CampTix project.
 
 A Shashura merchant account is required to use this plugin. Sign up or log in at [https://shashura.com](https://shashura.com).
 
@@ -109,7 +109,7 @@ What is sent, and when:
 * Status confirmation: after a prompt is sent, this plugin asks Shashura directly whether the referenced payment succeeded (and Shashura also notifies this plugin via a signed webhook). No card numbers, mobile money PINs, or other site data are sent.
 * These calls happen only when a buyer actually attempts a Mobile Money payment at checkout, never on a page load with no checkout activity.
 
-This service is provided by Shashura (operated by Cipherwave Software Limited): [Terms of Service](https://shashura.com/terms), [Privacy Policy](https://shashura.com/privacy).
+This service is provided by Shashura (operated by Techdom Digital Solutions): [Terms of Service](https://shashura.com/terms), [Privacy Policy](https://shashura.com/privacy).
 
 A Shashura merchant account, with an app's Client ID and Client Secret, is required to use this plugin. See "Getting Your Shashura API Credentials" above.
 
@@ -120,6 +120,10 @@ A Shashura merchant account, with an app's Client ID and Client Secret, is requi
 3. An optional "Powered by Shashura" footer, shown here on the PIN-approval step. Off by default; the site administrator can turn it on from the payment settings.
 
 == Changelog ==
+
+= 1.0.3 =
+* The buyer-facing payment pages now show the actual MTN MoMo and Airtel Money logos instead of a coloured badge with the network name. A site without permission to use the official logos can restore the plain badge, or supply its own image, through the `shasmomo_network_logo` filter.
+* Updated plugin credits: now developed and maintained by Techdom Digital Solutions. Added Cipherwave Software Limited and Moses Ssebuwufu as contributors.
 
 = 1.0.2 =
 * Added refund support: CampTix's "Refund" button (single, partial, and refund-all) now works through the Shashura API. The attendee's money is sent back to the phone that paid; Shashura's processing fee is not refunded.
@@ -135,6 +139,9 @@ A Shashura merchant account, with an app's Client ID and Client Secret, is requi
 * Initial release. MTN and Airtel Mobile Money collection for CampTix via the Shashura API, with number verification, webhook and status-enquiry reconciliation, duplicate-payment detection, and support for both CampTix 2.x and 1.4.x.
 
 == Upgrade Notice ==
+
+= 1.0.3 =
+Payment pages now show the real MTN/Airtel logos by default (filter-overridable). Plugin credits also updated: Techdom Digital Solutions, Cipherwave Software Limited.
 
 = 1.0.2 =
 "Powered by Shashura" is now opt-in (off by default); internal naming made more distinctive. No action needed unless you want the credit link, which you can now turn on in the payment settings.
@@ -165,7 +172,9 @@ An automated end-to-end suite (92 checks) has been run against WordPress with bo
 
 = Credits =
 
-Developed and maintained by Cipherwave Software Limited.
+* **Developed and maintained by:** Techdom Digital Solutions ([https://techdom.io](https://techdom.io))
+* **Contributors:** Cipherwave Software Limited ([https://cipherwavesolutions.com](https://cipherwavesolutions.com)), Moses Ssebuwufu (ssebuwufumoses on WordPress.org and GitHub)
+* **Trademarks:** The MTN MoMo and Airtel Money logos in `assets/images` are trademarks of MTN and Airtel.
 
 = Developer Filters =
 
