@@ -795,6 +795,49 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	 * @return array { status, transaction_id, refund_transaction_id, refund_transaction_details }
 	 */
 	public function send_refund_request( $payment_token, $amount = null ) {
+		$failed = array(
+			'status' => CampTix_Plugin::PAYMENT_STATUS_REFUND_FAILED,
+			'transaction_id' => '', 'refund_transaction_id' => '',
+			'refund_transaction_details' => array( 'error' => 'Refund requires manual reconciliation. Do not repeat the ledger reversal.' ),
+		);
+		$lock = $this->lock( $payment_token );
+		if ( ! $lock ) {
+			return $failed;
+		}
+		try {
+			$ids = $this->find_attendee_ids( $payment_token );
+			if ( ! $ids ) {
+				return $failed;
+			}
+			$first = $ids[0];
+			if ( get_post_meta( $first, '_shashura_refund_hold', true ) ) {
+				return $failed;
+			}
+			// Write before sending: a timeout or process crash must not invite another reversal.
+			$hold = array( 'phase' => 'request_started', 'at' => time(), 'amount' => $amount );
+			if ( ! update_post_meta( $first, '_shashura_refund_hold', $hold ) ) {
+				return $failed;
+			}
+			$result = $this->execute_refund_request( $payment_token, $amount );
+			if ( CampTix_Plugin::PAYMENT_STATUS_REFUNDED === $result['status'] ) {
+				delete_post_meta( $first, '_shashura_refund_hold' );
+			} else {
+				$hold['phase'] = 'reconciliation_required';
+				$hold['result'] = $result;
+				update_post_meta( $first, '_shashura_refund_hold', wp_slash( $hold ) );
+				wp_mail(
+					get_option( 'admin_email' ),
+					'CampTix Mobile Money refund needs reconciliation',
+					sprintf( "Customer payout is not confirmed. Refund reference: %s. Inspect the gateway ledger and payout status. Retry ONLY the payout in the Shashura dashboard if the reversal succeeded. Do not repeat the ledger reversal. The plugin has blocked further refund requests for this order pending manual reconciliation. Order: %s", $result['refund_transaction_id'], admin_url( 'post.php?post=' . $first . '&action=edit' ) )
+				);
+			}
+			return $result;
+		} finally {
+			$this->unlock( $lock );
+		}
+	}
+
+	private function execute_refund_request( $payment_token, $amount = null ) {
 		global $camptix;
 
 		$result = array(
@@ -829,24 +872,19 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			return $result;
 		}
 
-		$result['status']                     = CampTix_Plugin::PAYMENT_STATUS_REFUNDED;
 		$result['transaction_id']             = $transaction_id;
-		$result['refund_transaction_id']      = '' !== $refund['refund_ref'] ? $refund['refund_ref'] : $transaction_id;
+		$result['refund_transaction_id']      = $refund['refund_ref'];
 		$result['refund_transaction_details'] = array( 'raw' => $refund );
 
-		// The ledger reversal above always succeeds before Shashura attempts the real
-		// payout, so a failed payout does NOT undo it — CampTix is correctly told this
-		// refund succeeded. But the attendee's phone never actually received the money,
-		// so this needs a loud, actionable log entry rather than silently looking fine.
-		if ( $refund['payout'] && 'FAILED' === $refund['payout']['status'] ) {
+		// A successful reversal does not prove delivery to the customer's phone.
+		// Pending, absent and unknown payout states need reconciliation too.
+		if ( $refund['payout'] && 'TS' === $refund['payout']['status'] && $refund['amount_refunded'] > 0 && '' !== $refund['refund_ref'] ) {
+			$result['status'] = CampTix_Plugin::PAYMENT_STATUS_REFUNDED;
+		} else {
 			$camptix->log(
-				sprintf(
-					'Refund recorded, but the real payout to the attendee\'s phone failed (%s). The merchant wallet was still debited — retry the payout manually from the Shashura merchant dashboard for %s.',
-					'' !== $refund['payout']['message'] ? $refund['payout']['message'] : 'provider error',
-					$refund['refund_ref']
-				),
+				'Refund ledger response received, but customer payout is not confirmed. Further reversals are blocked; reconcile the ledger and retry only the payout in the gateway dashboard.',
 				isset( $order['attendee_id'] ) ? $order['attendee_id'] : null,
-				$refund,
+				$result,
 				'refund'
 			);
 		}
