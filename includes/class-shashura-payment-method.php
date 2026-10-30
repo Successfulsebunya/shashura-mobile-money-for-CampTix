@@ -610,7 +610,14 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 						$a['paid_amount'] = $r['amount'];
 					}
 				} elseif ( 'failed' === $r['state'] ) {
-					$a['status'] = 'failed';
+					$a['status']  = 'failed';
+					$a['failure'] = $r['failure_code'];
+					$camptix->log(
+						sprintf( 'Attempt %s failed: %s', $a['ref'], '' !== $r['failure_code'] ? $r['failure_code'] . ( '' !== $r['failure_text'] ? ' (' . $r['failure_text'] . ')' : '' ) : 'no reason given' ),
+						$ctx['first'],
+						null,
+						'payment'
+					);
 				} else {
 					$a['status'] = 'pending';
 				}
@@ -965,7 +972,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display-only flag, nothing is changed.
 			$flag = isset( $_GET['notice'] ) ? sanitize_key( wp_unslash( $_GET['notice'] ) ) : '';
 			if ( 'declined' === $flag ) {
-				$notice = __( 'The last payment request was declined or expired. You can try again.', 'shashura-mobile-money-for-camptix' );
+				$notice = $this->failure_message( $this->last_failure( $ctx ) );
 			}
 			$this->render_phone( $ctx, '', $notice );
 		}
@@ -1251,7 +1258,9 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			}
 			$out['next'] = $this->url( 'payment_return', $ctx['token'] );
 		} elseif ( 'failed' === $state ) {
-			$out['next'] = count( $ctx['attempts'] ) < self::MAX_ATTEMPTS
+			$fresh          = $this->load( $ctx['token'] );
+			$out['message'] = $this->failure_message( $this->last_failure( $fresh ? $fresh : $ctx ) );
+			$out['next']    = count( $ctx['attempts'] ) < self::MAX_ATTEMPTS
 				? $this->url( 'shashura_pay', $ctx['token'], array( 'notice' => 'declined' ) )
 				: $this->url( 'payment_return', $ctx['token'] );
 		} elseif ( 'closed' === $state ) {
@@ -1662,6 +1671,34 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		$theme = locate_template( 'shashura-mobile-money-for-camptix/' . $name . '.php' );
 		$path  = $theme ? $theme : SHASMOMO_DIR . 'templates/' . $name . '.php';
 		return (string) apply_filters( 'shasmomo_template', $path, $name );
+	}
+
+	/** Failure code of the latest attempt, if Shashura gave one. */
+	private function last_failure( $ctx ) {
+		$latest = $ctx && $ctx['attempts'] ? end( $ctx['attempts'] ) : null;
+		return $latest && 'failed' === $latest['status'] && ! empty( $latest['failure'] ) ? $latest['failure'] : '';
+	}
+
+	/** What to tell the buyer after a failed prompt, from Shashura's failure code. */
+	private function failure_message( $code ) {
+		switch ( $code ) {
+			case 'INSUFFICIENT_FUNDS':
+				return __( 'There was not enough balance on this Mobile Money account. Top up and try again, or use another number.', 'shashura-mobile-money-for-camptix' );
+			case 'WRONG_PIN':
+				return __( 'The PIN entered on the phone was wrong. Try again and enter your Mobile Money PIN.', 'shashura-mobile-money-for-camptix' );
+			case 'CANCELLED_BY_USER':
+				return __( 'The payment was cancelled on the phone. You can try again.', 'shashura-mobile-money-for-camptix' );
+			case 'TIMED_OUT':
+				return __( 'The prompt expired before it was approved. Try again and approve it when it appears on your phone.', 'shashura-mobile-money-for-camptix' );
+			case 'LIMIT_EXCEEDED':
+				return __( 'This payment is over the Mobile Money limit for this account. Use another number or contact your network.', 'shashura-mobile-money-for-camptix' );
+			case 'ACCOUNT_ERROR':
+				return __( 'This Mobile Money account could not be reached. Check the number or use another one.', 'shashura-mobile-money-for-camptix' );
+			case 'PROVIDER_ERROR':
+				return __( 'The mobile network had a problem. Please try again in a moment.', 'shashura-mobile-money-for-camptix' );
+			default:
+				return __( 'The last payment request was declined or expired. You can try again.', 'shashura-mobile-money-for-camptix' );
+		}
 	}
 
 	private function render_phone( $ctx, $error = '', $notice = '' ) {
