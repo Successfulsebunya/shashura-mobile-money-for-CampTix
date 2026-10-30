@@ -200,13 +200,15 @@ body.sc {
 	transition: background-color 9999s ease-out 0s;
 }
 .sc-phone-detected { display: flex; align-items: center; padding-right: 12px; }
+/* Network logos: shown whole on white with clear space. The radius never exceeds the padding, so the logo itself isn't clipped. */
 .sc-phone-detected img {
-	width: 32px;
-	height: 32px;
-	border-radius: 50%;
-	object-fit: cover;
-	box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--sc-border);
-	animation: sc-pop 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+	width: 34px;
+	height: 34px;
+	padding: 4px;
+	border-radius: 4px;
+	background: #fff;
+	object-fit: contain;
+	box-shadow: 0 0 0 1px var(--sc-border);
 }
 .sc-phone-detected.is-text::before {
 	content: attr(data-label);
@@ -294,7 +296,7 @@ body.sc {
 .sc-verified-logo { position: relative; display: inline-block; }
 .sc-net-logo,
 .sc-net-mark { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; }
-.sc-net-logo { background: #fff; object-fit: cover; box-shadow: 0 0 0 3px #fff, 0 6px 16px -6px rgba(17, 24, 39, 0.35); }
+.sc-net-logo { padding: 8px; border-radius: 8px; background: #fff; object-fit: contain; box-shadow: 0 0 0 1px var(--sc-border), 0 6px 16px -8px rgba(17, 24, 39, 0.3); }
 .sc-net-mark svg { width: 60%; height: 60%; }
 .sc-net--mtn .sc-net-mark { background: var(--sc-mtn); color: var(--sc-mtn-ink); }
 .sc-net--airtel .sc-net-mark { background: var(--sc-airtel); color: var(--sc-airtel-ink); }
@@ -337,7 +339,7 @@ body.sc {
 .sc-timer.is-expired .sc-ripple { display: none; }
 .sc-timer-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--sc-accent); }
 .sc-timer-inner > svg { width: 30px; height: 30px; animation: sc-buzz 2.4s ease-in-out infinite; }
-.sc-timer-logo { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px #fff, 0 6px 14px -6px rgba(17, 24, 39, 0.35); animation: sc-buzz 2.4s ease-in-out infinite; }
+.sc-timer-logo { width: 56px; height: 56px; padding: 6px; border-radius: 6px; background: #fff; object-fit: contain; box-shadow: 0 0 0 1px var(--sc-border), 0 6px 14px -8px rgba(17, 24, 39, 0.3); }
 .sc-timer-text { padding: 1px 8px; border-radius: 999px; background: var(--sc-surface); color: var(--sc-text); font-size: 13px; font-weight: 750; font-variant-numeric: tabular-nums; }
 .sc-status { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 18px 0 0; padding: 12px 14px; border-radius: var(--sc-radius-md); background: var(--sc-surface-2); color: var(--sc-muted); font-size: 14px; font-weight: 600; }
 .sc-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--sc-accent); animation: sc-pulse 1.6s ease-out infinite; }
@@ -465,7 +467,7 @@ body.sc {
 	.sc-phone-cc { margin-left: 6px; padding: 0 8px; font-size: 15px; }
 	.sc-phone input { padding: 0 8px; font-size: 18px; letter-spacing: 0.02em; }
 	.sc-phone-detected { padding-right: 8px; }
-	.sc-phone-detected img { width: 26px; height: 26px; }
+	.sc-phone-detected img { width: 28px; height: 28px; padding: 3px; border-radius: 3px; }
 }
 
 @media (max-width: 280px) {
@@ -484,7 +486,7 @@ body.sc {
 	.sc-phone-cc { margin: 6px 0 6px 6px; padding: 0 6px; font-size: 14px; }
 	.sc-phone input { padding: 0 6px; font-size: 16px; letter-spacing: 0; }
 	.sc-phone-detected { padding-right: 6px; }
-	.sc-phone-detected img { width: 22px; height: 22px; box-shadow: none; }
+	.sc-phone-detected img { width: 24px; height: 24px; padding: 2px; border-radius: 2px; }
 	.sc-help,
 	.sc-field-error { font-size: 12px; }
 	.sc-btn { min-height: 46px; margin-top: 16px; padding: 10px 12px; font-size: 15px; border-radius: 14px; }
@@ -536,7 +538,7 @@ body.sc {
 	.sc-phone { height: 44px; border-radius: 10px; }
 	.sc-phone-cc { margin: 5px 0 5px 5px; padding: 0 6px; font-size: 13px; }
 	.sc-phone input { padding: 0 6px; font-size: 16px; letter-spacing: 0; }
-	.sc-phone-detected img { width: 22px; height: 22px; box-shadow: none; }
+	.sc-phone-detected img { width: 24px; height: 24px; padding: 2px; border-radius: 2px; }
 	.sc-help { display: none; }
 	.sc-field-error { margin-top: 6px; font-size: 12px; }
 	.sc-btn { min-height: 44px; margin-top: 10px; padding: 8px 12px; font-size: 15px; border-radius: 12px; box-shadow: none; }

@@ -18,8 +18,8 @@ $shasmomo_network = $args['network'];
 			<img class="sc-net-logo" src="<?php echo esc_url( $shasmomo_network['logo'] ); ?>" alt="" width="64" height="64">
 		<?php else : ?>
 			<span class="sc-net-mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path fill="currentColor" d="M4 6.5A2.5 2.5 0 0 1 6.5 4H17a1 1 0 1 1 0 2H6.5a.5.5 0 0 0 0 1H18a2 2 0 0 1 2 2v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11Zm12 7a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z"/></svg></span>
+			<span class="sc-verified-dot" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path fill="currentColor" d="M9.5 16.2 5.3 12l-1.4 1.4 5.6 5.6L20.1 8.4 18.7 7z"/></svg></span>
 		<?php endif; ?>
-		<span class="sc-verified-dot" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path fill="currentColor" d="M9.5 16.2 5.3 12l-1.4 1.4 5.6 5.6L20.1 8.4 18.7 7z"/></svg></span>
 	</span>
 
 	<?php if ( '' !== $args['name'] ) : ?>
