@@ -10,7 +10,7 @@ Shashura Mobile Money for CampTix adds MTN and Airtel Mobile Money as a payment 
 
 A Shashura merchant account is required to use this plugin. Sign up or log in at [shashura.com](https://shashura.com).
 
-The plugin connects CampTix to the Shashura Mobile Money API and handles the full collection lifecycle: number verification, the PIN push to the buyer's phone, settlement confirmation, and reconciliation. It runs against either Shashura's Sandbox or Production environment, and the API endpoint is configurable, so it can be pointed at a specific Shashura deployment rather than the public default.
+The plugin connects CampTix to the Shashura Mobile Money API and handles the full collection lifecycle: number verification, the PIN push to the buyer's phone, settlement confirmation, and reconciliation. It runs against either Shashura's Sandbox or Production environment, and endpoint overrides are controlled by trusted deployment code, never per-site settings. See ENDPOINT-POLICY.md for migration and development testing.
 
 ## How a payment works
 
@@ -60,7 +60,7 @@ An automated end-to-end suite (92 checks) has been run against WordPress with bo
    - Enter the **Client ID** and **Client Secret** from your Shashura app (see [Getting your Shashura API credentials](#getting-your-shashura-api-credentials) below).
    - Choose **Sandbox** while testing. Switch to **Production** only when ready to take real payments.
    - Enter the **Webhook Secret** shown on your Shashura app. Mobile Money is not offered at checkout until this is set.
-   - Leave **API Base URL** blank to use Shashura's default endpoint, or set it to point at a specific Shashura deployment.
+   - API endpoints are controlled by trusted deployment code; see ENDPOINT-POLICY.md.
    - If the site is behind a proxy or load balancer, set **Visitor IP from** to the header it sends, and **Trusted proxies** to the number of proxies in front of the site (usually 1).
    - **Show "Powered by Shashura"** is off by default. Tick it to show a small credit link below the payment pages.
 4. Copy the webhook URL shown under Webhook Secret and set it as the **Callback URL** on the matching app in your Shashura dashboard.
@@ -110,7 +110,7 @@ Avoid it. A prompt sent under one environment cannot be checked while the plugin
 Open the attendee's edit screen under **Tickets → Attendees**. The CampTix log on that screen records every check, error, amount mismatch or duplicate-payment warning for that order.
 
 **Can this connect to a Shashura deployment other than the public default?**
-Yes. The API Base URL field under the payment settings accepts a full base URL, such as a sandbox or a dedicated gateway instance, in place of the default.
+Yes. A trusted deployment operator can set SHASMOMO_BASE_URL or use shasmomo_base_url. Per-site URL settings are ignored. See ENDPOINT-POLICY.md.
 
 ## External services
 
@@ -144,7 +144,7 @@ Against each paid order, this plugin stores the payer's registered name, a maske
 | `shasmomo_network_logo` | bundled MTN MoMo / Airtel Money logo | Image URL for a network logo (`mtn` or `airtel`). Return an empty string to show the coloured badge with the network name instead. |
 | `shasmomo_template` | plugin's `templates/` | Path of a payment page template. Themes can also override one by copying it to `your-theme/shashura-mobile-money-for-camptix/`. |
 | `shasmomo_http_timeout` | `25` | Timeout, in seconds, for calls to the Shashura API. |
-| `shasmomo_base_url` | `https://shashura.com/api/v1` | Overrides the API base URL on top of the settings field. HTTPS is enforced except for local or loopback addresses. |
+| `shasmomo_base_url` | `https://shashura.com/api/v1` | Trusted deployment override. HTTPS and WordPress safe HTTP validation are required; per-site endpoint settings are ignored. |
 
 ## Support
 

@@ -37,12 +37,12 @@ class Shasmomo_API {
 	private $webhook_secret;
 
 	public function __construct( $client_id, $client_secret, $environment, $webhook_secret = '', $base_url_override = '' ) {
-		$base = '' !== trim( (string) $base_url_override ) ? trim( (string) $base_url_override ) : self::BASE_URL;
+		// Endpoint trust belongs to deployment code, never a site's saved settings.
+		// Keep the constructor argument for backwards compatibility, but ignore it.
+		$base = defined( 'SHASMOMO_BASE_URL' ) ? (string) SHASMOMO_BASE_URL : self::BASE_URL;
 		$base = (string) apply_filters( 'shasmomo_base_url', $base );
-		// Credentials and bearer tokens must never travel over plain HTTP, except to a local/loopback
-		// host (used to point the plugin at a dev gateway instance running on the same machine).
 		if ( ! self::is_allowed_base_url( $base ) ) {
-			$base = self::BASE_URL;
+			$base = ''; // Fail closed; do not silently send credentials to another gateway.
 		}
 
 		$this->base_url       = untrailingslashit( $base );
@@ -52,17 +52,14 @@ class Shasmomo_API {
 		$this->webhook_secret = (string) $webhook_secret;
 	}
 
-	/** HTTPS, or plain HTTP to a local host, unless insecure URLs are allowed by filter. */
+	/** Trusted configuration must still use HTTPS without embedded credentials or URL suffixes. */
 	public static function is_allowed_base_url( $url ) {
-		return 0 === strpos( $url, 'https://' ) || self::is_local_http( $url ) || apply_filters( 'shasmomo_allow_insecure_base_url', false );
-	}
-
-	private static function is_local_http( $url ) {
-		if ( 0 !== strpos( $url, 'http://' ) ) {
-			return false;
-		}
-		$host = (string) wp_parse_url( $url, PHP_URL_HOST );
-		return in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true ) || (bool) preg_match( '/\.local$/', $host );
+		$parts = wp_parse_url( $url );
+		return is_array( $parts ) && isset( $parts['scheme'], $parts['host'] )
+			&& 'https' === $parts['scheme'] && '' !== $parts['host']
+			&& ! isset( $parts['user'] ) && ! isset( $parts['pass'] )
+			&& ! isset( $parts['query'] ) && ! isset( $parts['fragment'] )
+			&& ( ! isset( $parts['port'] ) || 443 === $parts['port'] );
 	}
 
 	/* ------------------------------------------------------------------
@@ -214,7 +211,7 @@ class Shasmomo_API {
 
 	private function token_key() {
 		// Tied to the secret and environment, so changing either invalidates the cached token.
-		return 'shasmomo_tok_' . md5( $this->client_id . '|' . $this->client_secret . '|' . $this->environment );
+		return 'shasmomo_tok_' . md5( $this->base_url . '|' . $this->client_id . '|' . $this->client_secret . '|' . $this->environment );
 	}
 
 	private function token( $force = false ) {
@@ -278,6 +275,9 @@ class Shasmomo_API {
 	}
 
 	private function send( $method, $path, $body, $headers ) {
+		if ( '' === $this->base_url ) {
+			return new WP_Error( 'shashura_endpoint', 'Invalid trusted Shashura API endpoint.' );
+		}
 		$args = array(
 			'method'      => $method,
 			'timeout'     => (int) apply_filters( 'shasmomo_http_timeout', 25 ),
@@ -292,7 +292,7 @@ class Shasmomo_API {
 			$args['body'] = wp_json_encode( $body );
 		}
 
-		$response = wp_remote_request( $this->base_url . $path, $args );
+		$response = wp_safe_remote_request( $this->base_url . $path, $args );
 		if ( is_wp_error( $response ) ) {
 			return new WP_Error( 'shashura_transport', $response->get_error_message(), array( 'http' => 0, 'api_code' => '' ) );
 		}

@@ -143,13 +143,6 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		$this->add_settings_field_helper( 'client_secret', __( 'Client Secret', 'shashura-mobile-money-for-camptix' ), array( $this, 'field_secret' ),
 			__( 'Starts with PSK_. Each environment has its own secret.', 'shashura-mobile-money-for-camptix' ) );
 
-		$this->add_settings_field_helper( 'base_url', __( 'API Base URL', 'shashura-mobile-money-for-camptix' ), array( $this, 'field_plain' ),
-			sprintf(
-				/* translators: %s: default API base URL */
-				__( 'Leave blank to use the default, %s. Only change this to point the plugin at a different gateway instance (e.g. a sandbox or local dev deployment).', 'shashura-mobile-money-for-camptix' ),
-				'<code>' . esc_html( Shasmomo_API::BASE_URL ) . '</code>'
-			) );
-
 		$this->add_settings_field_helper( 'environment', __( 'Environment', 'shashura-mobile-money-for-camptix' ), array( $this, 'field_environment' ),
 			__( 'Use Sandbox to test. Switch to Production to take real payments.', 'shashura-mobile-money-for-camptix' ) );
 
@@ -301,17 +294,8 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		if ( isset( $input['environment'] ) ) {
 			$output['environment'] = 'production' === $input['environment'] ? 'production' : 'sandbox';
 		}
-		if ( isset( $input['base_url'] ) ) {
-			$base_url = untrailingslashit( trim( (string) $input['base_url'] ) );
-			if ( '' === $base_url ) {
-				$output['base_url'] = '';
-			} elseif ( Shasmomo_API::is_allowed_base_url( $base_url ) ) {
-				$output['base_url'] = esc_url_raw( $base_url );
-			} else {
-				// The API client would silently fall back to the default URL, so say so now.
-				add_settings_error( 'camptix_options', 'shasmomo_base_url', __( 'The API Base URL must start with https://. The previous value was kept.', 'shashura-mobile-money-for-camptix' ) );
-			}
-		}
+		// Saved per-site endpoints are no longer trusted, including legacy values.
+		$output['base_url'] = '';
 		if ( isset( $input['name_display'] ) ) {
 			$output['name_display'] = 'partial' === $input['name_display'] ? 'partial' : 'full';
 		}
