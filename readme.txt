@@ -21,7 +21,7 @@ The plugin connects CampTix to the Shashura Mobile Money API and handles the ful
 = How a payment works =
 
 1. The buyer selects Mobile Money at checkout and enters their MTN or Airtel number.
-2. The number is verified against the network before anything is charged, and the registered account name is shown to the buyer for confirmation.
+2. The number is verified against the network before anything is charged. The registered name is hidden by default; site administrators may choose partial or full display.
 3. A PIN prompt is pushed to the buyer's phone for the exact order total.
 4. The plugin confirms the payment with Shashura directly rather than trusting the browser or an incoming webhook on their own. Both only trigger a check; only a status enquiry whose reference and amount match the order can mark it paid.
 5. Once confirmed, the buyer is taken to their CampTix ticket page and receives CampTix's standard confirmation email.
@@ -169,6 +169,8 @@ Initial release.
 Shashura is a Mobile Money payment gateway for Uganda, settling payments through MTN and Airtel Mobile Money. A Shashura merchant account is required to use this plugin. Sign up or log in at [https://shashura.com](https://shashura.com).
 
 = Privacy =
+
+A checkout visitor can check a Ugandan Mobile Money number that does not belong to them. The verification service may return the registered subscriber's name. By default this plugin hides that name from the visitor; site administrators can opt to show the partial or full name under Tickets → Setup → Payment. This can disclose personal information to a third party. Explain the chosen setting in the site's privacy policy. Rate limiting is not proof of number ownership. The name may still be received and temporarily stored by the plugin when display is off.
 
 Against each paid order, this plugin stores the payer's registered name, a masked mobile number, the mobile network, and the Shashura transaction reference, for reconciliation and support. Full, unmasked phone numbers and names are included in WordPress's own Tools → Export Personal Data and Erase Personal Data tools, so data-subject requests are handled through core WordPress, not a separate process. This plugin never handles or stores card numbers, mobile money PINs, or Shashura account credentials.
 
