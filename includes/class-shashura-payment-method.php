@@ -570,13 +570,24 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 				if ( 404 === Shasmomo_API::http_status( $r ) && $now - $a['created'] > self::UNKNOWN_FAIL_AFTER ) {
 					$a['status'] = 'lost';
 				}
-				$camptix->log( 'Shashura enquiry error for ' . $a['ref'] . ': ' . $r->get_error_message(), $ctx['first'], null, 'payment' );
+				// Repeated polling during an outage must not flood the attendee log.
+				// Persist the error class on the attempt and log only when it changes.
+				$error_class = $r->get_error_code() . ':' . Shasmomo_API::http_status( $r );
+				if ( ! isset( $a['enquiry_error_class'] ) || $a['enquiry_error_class'] !== $error_class ) {
+					$camptix->log( 'Shashura enquiry error for ' . $a['ref'] . ': ' . $r->get_error_message(), $ctx['first'], null, 'payment' );
+					$a['enquiry_error_class'] = $error_class;
+				}
 			} elseif ( ! empty( $a['tid'] ) && '' !== $r['tid'] && $r['tid'] !== $a['tid'] ) {
 				// external_ref is overwritten with the telco's own confirmation id once a
 				// payment settles, so it no longer reliably matches what was asked for — tid
 				// is Shashura's own permanent identifier and is what's checked instead.
 				$camptix->log( 'Shashura enquiry returned a different transaction; ignoring.', $ctx['first'], array( 'asked_tid' => $a['tid'], 'got_tid' => $r['tid'] ), 'payment' );
 			} else {
+				// A recovered enquiry can report a future failure again if needed.
+				if ( isset( $a['enquiry_error_class'] ) ) {
+					unset( $a['enquiry_error_class'] );
+					$camptix->log( 'Shashura enquiry recovered for ' . $a['ref'] . '.', $ctx['first'], null, 'payment' );
+				}
 				$a['raw_state']   = $r['raw_state'];
 				$a['tid']         = $r['tid'] ? $r['tid'] : ( isset( $a['tid'] ) ? $a['tid'] : '' );
 				$a['network_ref'] = $r['network_ref'];
