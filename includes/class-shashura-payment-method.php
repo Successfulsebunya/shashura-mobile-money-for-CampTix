@@ -79,7 +79,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			'environment'    => 'sandbox',
 			'webhook_secret' => '',
 			'base_url'       => '',
-			'name_display'   => 'partial',
+			'name_display'   => 'off',
 			'ip_source'      => 'remote_addr',
 			'proxy_hops'     => 1,
 			// Off by default: a "Powered by Shashura" credit link must never
@@ -154,7 +154,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			) );
 
 		$this->add_settings_field_helper( 'name_display', __( 'Account name shown to buyer', 'shashura-mobile-money-for-camptix' ), array( $this, 'field_name_display' ),
-			__( 'How the registered name from the number check is shown before the buyer confirms.', 'shashura-mobile-money-for-camptix' ) );
+			__( 'A visitor can enter any supported number at checkout. Hide the subscriber name by default to protect third-party privacy.', 'shashura-mobile-money-for-camptix' ) );
 
 		$this->add_settings_field_helper( 'ip_source', __( 'Visitor IP from', 'shashura-mobile-money-for-camptix' ), array( $this, 'field_ip_source' ),
 			__( 'Used to rate-limit number checks. Choose a proxy header only if your site really sits behind that proxy: visitors can fake these headers otherwise.', 'shashura-mobile-money-for-camptix' ) );
@@ -215,7 +215,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 
 	public function field_name_display( $args ) {
 		printf( '<select name="%s">', esc_attr( $args['name'] ) );
-		foreach ( array( 'full' => __( 'Full name (e.g. Mugisha Samuel)', 'shashura-mobile-money-for-camptix' ), 'partial' => __( 'First name and initials (e.g. Mugisha S.)', 'shashura-mobile-money-for-camptix' ) ) as $k => $label ) {
+		foreach ( array( 'off' => __( 'Hide account name (recommended)', 'shashura-mobile-money-for-camptix' ), 'partial' => __( 'First name and initials (e.g. Mugisha S.)', 'shashura-mobile-money-for-camptix' ), 'full' => __( 'Full name (e.g. Mugisha Samuel)', 'shashura-mobile-money-for-camptix' ) ) as $k => $label ) {
 			printf( '<option value="%s"%s>%s</option>', esc_attr( $k ), selected( $args['value'], $k, false ), esc_html( $label ) );
 		}
 		echo '</select>';
@@ -297,7 +297,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		// Saved per-site endpoints are no longer trusted, including legacy values.
 		$output['base_url'] = '';
 		if ( isset( $input['name_display'] ) ) {
-			$output['name_display'] = 'partial' === $input['name_display'] ? 'partial' : 'full';
+			$output['name_display'] = in_array( $input['name_display'], array( 'off', 'partial', 'full' ), true ) ? $input['name_display'] : 'off';
 		}
 		if ( isset( $input['ip_source'] ) ) {
 			$output['ip_source'] = in_array( $input['ip_source'], array( 'remote_addr', 'cloudflare', 'x_real_ip', 'x_forwarded_for' ), true ) ? $input['ip_source'] : 'remote_addr';
@@ -1734,6 +1734,9 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	 * ================================================================ */
 
 	private function display_name( $name ) {
+		if ( 'off' === $this->options['name_display'] ) {
+			return '';
+		}
 		if ( 'partial' !== $this->options['name_display'] ) {
 			return $name;
 		}
