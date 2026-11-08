@@ -172,6 +172,8 @@ Shashura is a Mobile Money payment gateway for Uganda, settling payments through
 
 Against each paid order, this plugin stores the payer's registered name, a masked mobile number, the mobile network, and the Shashura transaction reference, for reconciliation and support. Full, unmasked phone numbers and names are included in WordPress's own Tools → Export Personal Data and Erase Personal Data tools, so data-subject requests are handled through core WordPress, not a separate process. This plugin never handles or stores card numbers, mobile money PINs, or Shashura account credentials.
 
+CampTix writes each payment result to its own order log, which WordPress's Erase Personal Data tool does not reach. The payer's name and masked number are therefore not included in the payment data this plugin passes to CampTix. Log entries written by earlier versions may still contain them; if a person asks for erasure, those entries have to be cleaned up in the database. The name and number kept on the payment attempt itself are still covered by the export and erase tools.
+
 = Support =
 
 For help with a Shashura account, API credentials, or a specific payment, contact Shashura support through the merchant dashboard at [https://shashura.com](https://shashura.com). For issues with this plugin itself, use this plugin's support forum on WordPress.org.
