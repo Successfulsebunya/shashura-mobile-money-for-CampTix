@@ -697,10 +697,34 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 
 	private function payment_data( $ctx, $rec ) {
 		global $camptix;
-		$p = $rec['paid'][0];
 
-		if ( count( $rec['paid'] ) > 1 && ! get_post_meta( $ctx['first'], '_shashura_dup_alerted', true ) ) {
-			$refs = wp_list_pluck( array_slice( $rec['paid'], 1 ), 'ref' );
+		// Once the order is completed, its transaction stays the one the buyer's receipt shows.
+		// A prompt approved later is the duplicate, even if it was sent first.
+		$p      = $rec['paid'][0];
+		$stored = (string) get_post_meta( $ctx['first'], 'tix_transaction_id', true );
+		if ( '' !== $stored ) {
+			foreach ( $rec['paid'] as $a ) {
+				if ( ( ! empty( $a['tid'] ) && $stored === $a['tid'] ) || $stored === $a['ref'] ) {
+					$p = $a;
+					break;
+				}
+			}
+		}
+		$extra = array();
+		foreach ( $rec['paid'] as $a ) {
+			if ( $a['ref'] !== $p['ref'] ) {
+				$extra[] = $a['ref'];
+			}
+		}
+
+		// Alert once per extra payment. Orders alerted before this was tracked keep their alert.
+		$alerted = get_post_meta( $ctx['first'], '_shashura_dup_refs', true );
+		if ( ! is_array( $alerted ) ) {
+			$alerted = get_post_meta( $ctx['first'], '_shashura_dup_alerted', true ) ? $extra : array();
+		}
+		$refs = array_values( array_diff( $extra, $alerted ) );
+
+		if ( $refs ) {
 			$camptix->log(
 				'DUPLICATE mobile money payment: more than one prompt was approved for this order. Refund the extra payment(s) manually.',
 				$ctx['first'],
@@ -708,6 +732,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 				'payment'
 			);
 			update_post_meta( $ctx['first'], '_shashura_dup_alerted', time() );
+			update_post_meta( $ctx['first'], '_shashura_dup_refs', array_merge( $alerted, $refs ) );
 			wp_mail(
 				get_option( 'admin_email' ),
 				sprintf( '[%s] Duplicate mobile money payment – refund needed', wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) ),
@@ -733,7 +758,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 					'payer_name'         => $p['name'],
 					'payer_number'       => $this->masked( $p ),
 					'amount'             => $p['paid_amount'],
-					'duplicate_payments' => count( $rec['paid'] ) > 1 ? wp_list_pluck( array_slice( $rec['paid'], 1 ), 'ref' ) : array(),
+					'duplicate_payments' => $extra,
 				),
 			),
 		);
