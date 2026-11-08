@@ -54,7 +54,7 @@ An automated end-to-end suite (92 checks) has been run against WordPress with bo
 ## Installation
 
 1. Install and activate CampTix. Under **Tickets → Setup → General**, set the ticket currency to UGX.
-2. Upload the plugin zip under **Plugins → Add New → Upload Plugin**, then activate it.
+2. Under **Plugins → Add New**, search for "Shashura Mobile Money for CampTix", then install and activate it. You can also upload the plugin zip under **Plugins → Add New → Upload Plugin**.
 3. Go to **Tickets → Setup → Payment** and open the **Mobile Money (MTN / Airtel)** section:
    - Set **Enabled** to Yes.
    - Enter the **Client ID** and **Client Secret** from your Shashura app (see [Getting your Shashura API credentials](#getting-your-shashura-api-credentials) below).
