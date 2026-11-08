@@ -1,5 +1,5 @@
 === Shashura Mobile Money for CampTix ===
-Contributors: cipherwave, ssebuwufumoses
+Contributors: cipherwave, ssebuwufumoses, mosescursor
 Tags: camptix, shashura, mobile money, mtn, airtel, uganda
 Requires at least: 5.8
 Tested up to: 7.1
@@ -183,7 +183,7 @@ An automated end-to-end suite (92 checks) has been run against WordPress with bo
 = Credits =
 
 * **Developed and maintained by:** Techdom Digital Solutions ([https://techdom.io](https://techdom.io))
-* **Contributors:** Cipherwave Software Limited ([https://cipherwavesolutions.com](https://cipherwavesolutions.com)), Moses Ssebuwufu ([ssebuwufumoses](https://profiles.wordpress.org/ssebuwufumoses/) on WordPress.org, [@ssebuwufumoses](https://github.com/ssebuwufumoses) on GitHub)
+* **Contributors:** Cipherwave Software Limited ([https://cipherwavesolutions.com](https://cipherwavesolutions.com)), Moses Ssebuwufu ([ssebuwufumoses](https://profiles.wordpress.org/ssebuwufumoses/) on WordPress.org, [@ssebuwufumoses](https://github.com/ssebuwufumoses) on GitHub), Moses Cursor Ssebunya ([mosescursor](https://profiles.wordpress.org/mosescursor/) on WordPress.org, [@Successfulsebunya](https://github.com/Successfulsebunya) on GitHub)
 * **Trademarks:** The MTN MoMo and Airtel Money logos in `assets/images` are trademarks of MTN and Airtel.
 
 = Developer Filters =

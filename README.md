@@ -153,7 +153,7 @@ For help with a Shashura account, API credentials, or a specific payment, contac
 ## Credits
 
 - **Developed and maintained by:** [Techdom Digital Solutions](https://techdom.io)
-- **Contributors:** [Cipherwave Software Limited](https://cipherwavesolutions.com), Moses Ssebuwufu ([ssebuwufumoses](https://profiles.wordpress.org/ssebuwufumoses/) on WordPress.org, [@ssebuwufumoses](https://github.com/ssebuwufumoses) on GitHub)
+- **Contributors:** [Cipherwave Software Limited](https://cipherwavesolutions.com), Moses Ssebuwufu ([ssebuwufumoses](https://profiles.wordpress.org/ssebuwufumoses/) on WordPress.org, [@ssebuwufumoses](https://github.com/ssebuwufumoses) on GitHub), Moses Cursor Ssebunya ([mosescursor](https://profiles.wordpress.org/mosescursor/) on WordPress.org, [@Successfulsebunya](https://github.com/Successfulsebunya) on GitHub)
 - **Trademarks:** The MTN MoMo and Airtel Money logos in `assets/images` are trademarks of MTN and Airtel.
 
 ## License
