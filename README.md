@@ -162,9 +162,11 @@ php bin/check-zip.php
 
 The plugin has no Composer runtime dependencies, so the zip never includes `vendor/`.
 
+To send a change, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Support
 
-For help with a Shashura account, API credentials, or a specific payment, contact Shashura support through the merchant dashboard at [shashura.com](https://shashura.com). For issues with this plugin itself, open an issue in this repository or use the plugin's support forum on WordPress.org.
+For help with a Shashura account, API credentials, or a specific payment, contact Shashura support through the merchant dashboard at [shashura.com](https://shashura.com). For issues with this plugin itself, open an issue in this repository or use the plugin's support forum on WordPress.org. Report security problems privately, as described in [SECURITY.md](SECURITY.md).
 
 ## Credits
 

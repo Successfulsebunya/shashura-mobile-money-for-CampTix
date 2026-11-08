@@ -45,7 +45,7 @@ foreach ( $in_zip as $name ) {
 }
 
 // Development files stay out even if a line goes missing from .distignore.
-$never = array( '.git', '.github', '.distignore', '.gitignore', '.gitattributes', 'tests', 'bin', 'build', 'vendor', 'README.md', 'composer.json', 'composer.lock', 'phpcs.xml.dist', 'screenshot-*.png' );
+$never = array( '.git', '.github', '.distignore', '.gitignore', '.gitattributes', '.editorconfig', 'tests', 'bin', 'build', 'vendor', 'README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'composer.json', 'composer.lock', 'phpcs.xml.dist', 'screenshot-*.png' );
 foreach ( $in_zip as $name ) {
 	$rel = substr( $name, strlen( $slug ) + 1 );
 	foreach ( $never as $pattern ) {

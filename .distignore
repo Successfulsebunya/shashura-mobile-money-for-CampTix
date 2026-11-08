@@ -3,9 +3,12 @@
 /.github
 /.gitignore
 /.gitattributes
+/.editorconfig
 /.distignore
 /tests
 /README.md
+/CONTRIBUTING.md
+/SECURITY.md
 /ENDPOINT-POLICY.md
 /RECONCILIATION.md
 /REFUND-RECOVERY.md
