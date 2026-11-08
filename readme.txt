@@ -16,7 +16,7 @@ Shashura Mobile Money for CampTix adds MTN and Airtel Mobile Money as a payment 
 
 A Shashura merchant account is required to use this plugin. Sign up or log in at [https://shashura.com](https://shashura.com).
 
-The plugin connects CampTix to the Shashura Mobile Money API and handles the full collection lifecycle: number verification, the PIN push to the buyer's phone, settlement confirmation, and reconciliation. It runs against either Shashura's Sandbox or Production environment, and endpoint overrides are controlled by trusted deployment code, never per-site settings. See ENDPOINT-POLICY.md for migration and development testing.
+The plugin connects CampTix to the Shashura Mobile Money API and handles the full collection lifecycle: number verification, the PIN push to the buyer's phone, settlement confirmation, and reconciliation. It runs against either Shashura's Sandbox or Production environment, and endpoint overrides are controlled by trusted deployment code, never per-site settings. See [ENDPOINT-POLICY.md](https://github.com/Techdom-Digital-Solutions-U-limited/shashura-mobile-money-for-CampTix/blob/main/ENDPOINT-POLICY.md) for migration and development testing.
 
 = How a payment works =
 
@@ -33,7 +33,7 @@ The plugin connects CampTix to the Shashura Mobile Money API and handles the ful
 * Incoming webhooks are verified against an HMAC-SHA256 signature. Unsigned, forged, oversized or mismatched-environment events are rejected.
 * A per-order lock stops the webhook, the buyer's browser, an order cancellation and CampTix's own timeout sweep from recording conflicting outcomes for the same order at the same time.
 * A payment approved after an order was cancelled or timed out is still recognised and completes the order.
-* Works with both current CampTix (2.x) and CampTix 1.4.x, using the reconciliation strategy appropriate to each.
+* Works with current CampTix (2.x), the version WordCamp.org runs. CampTix 1.4.x also works, with one known limitation: when a webhook settles an order, CampTix 1.x ends the request itself, so Shashura gets an empty reply instead of the plugin's response. The order is still updated.
 
 = Requirements =
 
@@ -50,7 +50,7 @@ The plugin connects CampTix to the Shashura Mobile Money API and handles the ful
    * Enter the Client ID and Client Secret from your Shashura app (see "Getting Your Shashura API Credentials" below).
    * Choose Sandbox while testing. Switch to Production only when ready to take real payments.
    * Enter the Webhook Secret shown on your Shashura app. Mobile Money is not offered at checkout until this is set.
-   * API endpoints are controlled by trusted deployment code; see ENDPOINT-POLICY.md.
+   * API endpoints are controlled by trusted deployment code; see [ENDPOINT-POLICY.md](https://github.com/Techdom-Digital-Solutions-U-limited/shashura-mobile-money-for-CampTix/blob/main/ENDPOINT-POLICY.md).
 4. Copy the webhook URL shown under Webhook Secret and set it as the Callback URL on the matching app in your Shashura dashboard.
 5. Ask Shashura to whitelist your server's outbound IP address for that app. Requests from an IP that is not whitelisted are rejected.
 6. Save your settings. The Connection line confirms whether the credentials authenticate successfully.
@@ -96,7 +96,7 @@ Open the attendee's edit screen under Tickets → Attendees. The CampTix log on 
 
 = Can this connect to a Shashura deployment other than the public default? =
 
-Yes. A trusted deployment operator can set SHASMOMO_BASE_URL or use shasmomo_base_url. Per-site URL settings are ignored. See ENDPOINT-POLICY.md.
+Yes. A trusted deployment operator can set SHASMOMO_BASE_URL or use shasmomo_base_url. Per-site URL settings are ignored. See [ENDPOINT-POLICY.md](https://github.com/Techdom-Digital-Solutions-U-limited/shashura-mobile-money-for-CampTix/blob/main/ENDPOINT-POLICY.md).
 
 == External services ==
 

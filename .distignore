@@ -1,0 +1,11 @@
+# Kept out of the plugin zip (wp dist-archive and the usual WordPress.org deploy actions read this).
+/.git
+/.github
+/.gitignore
+/.distignore
+/tests
+/README.md
+/ENDPOINT-POLICY.md
+/RECONCILIATION.md
+/REFUND-RECOVERY.md
+/screenshot-*.png
