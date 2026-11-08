@@ -27,18 +27,24 @@ require_once SHASMOMO_DIR . 'includes/class-shashura-phone.php';
  * CampTix fires camptix_load_addons on init (priority 8). The payment method extends a
  * CampTix class, so it is only loaded from there.
  */
-add_action( 'camptix_load_addons', function () {
-	if ( ! class_exists( 'CampTix_Payment_Method' ) || ! function_exists( 'camptix_register_addon' ) ) {
-		return;
+add_action(
+	'camptix_load_addons',
+	function () {
+		if ( ! class_exists( 'CampTix_Payment_Method' ) || ! function_exists( 'camptix_register_addon' ) ) {
+			return;
+		}
+		require_once SHASMOMO_DIR . 'includes/class-shashura-payment-method.php';
+		camptix_register_addon( 'Shasmomo_Payment_Method' );
 	}
-	require_once SHASMOMO_DIR . 'includes/class-shashura-payment-method.php';
-	camptix_register_addon( 'Shasmomo_Payment_Method' );
-} );
+);
 
-add_action( 'admin_notices', function () {
-	if ( ! class_exists( 'CampTix_Plugin' ) && current_user_can( 'activate_plugins' ) ) {
-		echo '<div class="notice notice-error"><p>'
-			. esc_html__( 'Shashura Mobile Money for CampTix needs the CampTix plugin to be installed and active.', 'shashura-mobile-money-for-camptix' )
-			. '</p></div>';
+add_action(
+	'admin_notices',
+	function () {
+		if ( ! class_exists( 'CampTix_Plugin' ) && current_user_can( 'activate_plugins' ) ) {
+			echo '<div class="notice notice-error"><p>'
+				. esc_html__( 'Shashura Mobile Money for CampTix needs the CampTix plugin to be installed and active.', 'shashura-mobile-money-for-camptix' )
+				. '</p></div>';
+		}
 	}
-} );
+);

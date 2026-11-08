@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
 	<label class="sc-label" for="sc-phone"><?php esc_html_e( 'Mobile Money number', 'shashura-mobile-money-for-camptix' ); ?></label>
 	<div class="sc-phone<?php echo esc_attr( $args['error'] ? ' is-invalid' : '' ); ?>">
 		<span class="sc-phone-cc" aria-hidden="true">+256</span>
-		<input id="sc-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="13" placeholder="772 123 456" value="<?php echo esc_attr( $args['prefill'] ); ?>" required aria-describedby="<?php echo esc_attr( $args['error'] ? 'sc-phone-error' : 'sc-phone-help' ); ?>"<?php if ( $args['error'] ) : ?> aria-invalid="true"<?php endif; ?>>
+		<input id="sc-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="13" placeholder="772 123 456" value="<?php echo esc_attr( $args['prefill'] ); ?>" required aria-describedby="<?php echo esc_attr( $args['error'] ? 'sc-phone-error' : 'sc-phone-help' ); ?>"<?php echo $args['error'] ? ' aria-invalid="true"' : ''; ?>>
 		<span class="sc-phone-detected" id="sc-detected">
 			<?php foreach ( $args['networks'] as $shasmomo_network ) : ?>
 				<?php if ( ! empty( $shasmomo_network['logo'] ) ) : ?>

@@ -2,6 +2,7 @@
 /.git
 /.github
 /.gitignore
+/.gitattributes
 /.distignore
 /tests
 /README.md

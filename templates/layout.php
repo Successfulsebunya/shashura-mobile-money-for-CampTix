@@ -68,7 +68,7 @@ defined( 'ABSPATH' ) || exit;
 		<?php if ( $layout['step'] ) : ?>
 			<ol class="sc-dots" aria-label="<?php echo esc_attr( sprintf( /* translators: 1: current step, 2: total steps */ __( 'Step %1$d of %2$d', 'shashura-mobile-money-for-camptix' ), $layout['step'], count( $layout['steps'] ) ) ); ?>">
 				<?php foreach ( $layout['steps'] as $shasmomo_n => $shasmomo_label ) : ?>
-					<li class="<?php echo esc_attr( $shasmomo_n < $layout['step'] ? 'is-done' : ( $shasmomo_n === $layout['step'] ? 'is-current' : '' ) ); ?>"<?php if ( $shasmomo_n === $layout['step'] ) : ?> aria-current="step"<?php endif; ?>>
+					<li class="<?php echo esc_attr( $shasmomo_n < $layout['step'] ? 'is-done' : ( $shasmomo_n === $layout['step'] ? 'is-current' : '' ) ); ?>"<?php echo $shasmomo_n === $layout['step'] ? ' aria-current="step"' : ''; ?>>
 						<span class="sc-dots-label"><?php echo esc_html( $shasmomo_label ); ?></span>
 					</li>
 				<?php endforeach; ?>

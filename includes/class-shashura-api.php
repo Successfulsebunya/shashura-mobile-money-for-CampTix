@@ -19,6 +19,9 @@
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Client for the Shashura Mobile Money API.
+ */
 class Shasmomo_API {
 
 	const BASE_URL = 'https://shashura.com/api/v1';
@@ -30,13 +33,51 @@ class Shasmomo_API {
 		'PENDING' => 'pending',
 	);
 
+	/**
+	 * API base URL, without a trailing slash. Empty when the configured URL isn't allowed.
+	 *
+	 * @var string
+	 */
 	private $base_url;
+
+	/**
+	 * Shashura client ID.
+	 *
+	 * @var string
+	 */
 	private $client_id;
+
+	/**
+	 * Shashura client secret.
+	 *
+	 * @var string
+	 */
 	private $client_secret;
+
+	/**
+	 * Target environment: sandbox or production.
+	 *
+	 * @var string
+	 */
 	private $environment;
+
+	/**
+	 * Secret used to sign webhooks.
+	 *
+	 * @var string
+	 */
 	private $webhook_secret;
 
-	public function __construct( $client_id, $client_secret, $environment, $webhook_secret = '', $base_url_override = '' ) {
+	/**
+	 * Set up the client.
+	 *
+	 * @param string $client_id         Shashura client ID.
+	 * @param string $client_secret     Shashura client secret.
+	 * @param string $environment       sandbox or production. Anything else means production.
+	 * @param string $webhook_secret    Secret used to sign webhooks.
+	 * @param string $base_url_override Ignored. Kept so existing callers don't break.
+	 */
+	public function __construct( $client_id, $client_secret, $environment, $webhook_secret = '', $base_url_override = '' ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed
 		// Endpoint trust belongs to deployment code, never a site's saved settings.
 		// Keep the constructor argument for backwards compatibility, but ignore it.
 		$base = defined( 'SHASMOMO_BASE_URL' ) ? (string) SHASMOMO_BASE_URL : self::BASE_URL;
@@ -52,7 +93,12 @@ class Shasmomo_API {
 		$this->webhook_secret = (string) $webhook_secret;
 	}
 
-	/** Trusted configuration must still use HTTPS without embedded credentials or URL suffixes. */
+	/**
+	 * Trusted configuration must still use HTTPS without embedded credentials or URL suffixes.
+	 *
+	 * @param string $url Base URL to check.
+	 * @return bool
+	 */
 	public static function is_allowed_base_url( $url ) {
 		$parts = wp_parse_url( $url );
 		return is_array( $parts ) && isset( $parts['scheme'], $parts['host'] )
@@ -62,9 +108,11 @@ class Shasmomo_API {
 			&& ( ! isset( $parts['port'] ) || 443 === $parts['port'] );
 	}
 
-	/* ------------------------------------------------------------------
+	/*
+	 * ------------------------------------------------------------------
 	 * Endpoints
-	 * ---------------------------------------------------------------- */
+	 * ------------------------------------------------------------------
+	 */
 
 	/** Check the credentials by fetching a fresh token. @return true|WP_Error */
 	public function test_credentials() {
@@ -73,6 +121,8 @@ class Shasmomo_API {
 	}
 
 	/**
+	 * Look up the registered name and network for a mobile number.
+	 *
 	 * @param string $msisdn Digits with country code, e.g. 256770000000.
 	 * @return array|WP_Error { name, network, msisdn }
 	 */
@@ -98,14 +148,21 @@ class Shasmomo_API {
 	/**
 	 * Push a PIN prompt to the payer's phone.
 	 *
+	 * @param string $msisdn    Digits with country code.
+	 * @param int    $amount    Amount in UGX.
+	 * @param string $reference Our reference for this payment attempt.
 	 * @return array|WP_Error { tid }
 	 */
 	public function request_to_pay( $msisdn, $amount, $reference ) {
-		$res = $this->authed( 'POST', '/requestToPay', array(
-			'msisdn'    => (string) $msisdn,
-			'amount'    => (int) $amount,
-			'reference' => (string) $reference,
-		) );
+		$res = $this->authed(
+			'POST',
+			'/requestToPay',
+			array(
+				'msisdn'    => (string) $msisdn,
+				'amount'    => (int) $amount,
+				'reference' => (string) $reference,
+			)
+		);
 		if ( is_wp_error( $res ) ) {
 			return $res;
 		}
@@ -114,6 +171,9 @@ class Shasmomo_API {
 	}
 
 	/**
+	 * Ask Shashura for the current state of a payment.
+	 *
+	 * @param string $reference Our reference for the payment attempt.
 	 * @return array|WP_Error { state: paid|failed|pending, raw_state, amount: int|null, external_ref, tid, network_ref }
 	 */
 	public function enquiry( $reference ) {
@@ -156,12 +216,16 @@ class Shasmomo_API {
 	 * }
 	 */
 	public function refund( $tid, $amount, $reason, $send_to_customer = true ) {
-		$res = $this->authed( 'POST', '/refund', array(
-			'tid'              => (string) $tid,
-			'amount'           => null === $amount ? 0 : (float) $amount,
-			'reason'           => '' !== trim( (string) $reason ) ? (string) $reason : 'Refund requested.',
-			'send_to_customer' => (bool) $send_to_customer,
-		) );
+		$res = $this->authed(
+			'POST',
+			'/refund',
+			array(
+				'tid'              => (string) $tid,
+				'amount'           => null === $amount ? 0 : (float) $amount,
+				'reason'           => '' !== trim( (string) $reason ) ? (string) $reason : 'Refund requested.',
+				'send_to_customer' => (bool) $send_to_customer,
+			)
+		);
 		if ( is_wp_error( $res ) ) {
 			return $res;
 		}
@@ -184,7 +248,13 @@ class Shasmomo_API {
 		);
 	}
 
-	/** Constant-time check of X-Shashura-Signature against the raw request body. */
+	/**
+	 * Constant-time check of X-Shashura-Signature against the raw request body.
+	 *
+	 * @param string $raw_body  Raw webhook request body.
+	 * @param string $signature Value of the X-Shashura-Signature header.
+	 * @return bool
+	 */
 	public function verify_signature( $raw_body, $signature ) {
 		if ( '' === $this->webhook_secret || ! is_string( $signature ) || '' === $signature ) {
 			return false;
@@ -193,27 +263,50 @@ class Shasmomo_API {
 		return hash_equals( $expected, strtolower( trim( $signature ) ) );
 	}
 
-	/** Shashura error code (e.g. GATEWAY_REJECTED) carried on a WP_Error, or ''. */
+	/**
+	 * Shashura error code (e.g. GATEWAY_REJECTED) carried on a WP_Error, or ''.
+	 *
+	 * @param WP_Error|mixed $error Result of an API call.
+	 * @return string
+	 */
 	public static function error_code( $error ) {
 		$d = is_wp_error( $error ) ? $error->get_error_data() : null;
 		return is_array( $d ) && ! empty( $d['api_code'] ) ? (string) $d['api_code'] : '';
 	}
 
-	/** HTTP status carried on a WP_Error (0 for transport errors). */
+	/**
+	 * HTTP status carried on a WP_Error (0 for transport errors).
+	 *
+	 * @param WP_Error|mixed $error Result of an API call.
+	 * @return int
+	 */
 	public static function http_status( $error ) {
 		$d = is_wp_error( $error ) ? $error->get_error_data() : null;
 		return is_array( $d ) && ! empty( $d['http'] ) ? (int) $d['http'] : 0;
 	}
 
-	/* ------------------------------------------------------------------
+	/*
+	 * ------------------------------------------------------------------
 	 * Auth and transport
-	 * ---------------------------------------------------------------- */
+	 * ------------------------------------------------------------------
+	 */
 
+	/**
+	 * Transient key for the cached access token.
+	 *
+	 * @return string
+	 */
 	private function token_key() {
 		// Tied to the secret and environment, so changing either invalidates the cached token.
 		return 'shasmomo_tok_' . md5( $this->base_url . '|' . $this->client_id . '|' . $this->client_secret . '|' . $this->environment );
 	}
 
+	/**
+	 * Get an access token, from the cache unless forced.
+	 *
+	 * @param bool $force Fetch a new token even if one is cached.
+	 * @return string|WP_Error
+	 */
 	private function token( $force = false ) {
 		if ( '' === $this->client_id || '' === $this->client_secret ) {
 			return new WP_Error( 'shashura_not_configured', 'Shashura credentials are not set.' );
@@ -225,13 +318,18 @@ class Shasmomo_API {
 			}
 		}
 
-		$res = $this->send( 'POST', '/auth', array(
-			'client_id'     => $this->client_id,
-			'client_secret' => $this->client_secret,
-		), array(
-			'X-CLIENT-ID'          => $this->client_id,
-			'X-Target-Environment' => $this->environment,
-		) );
+		$res = $this->send(
+			'POST',
+			'/auth',
+			array(
+				'client_id'     => $this->client_id,
+				'client_secret' => $this->client_secret,
+			),
+			array(
+				'X-CLIENT-ID'          => $this->client_id,
+				'X-Target-Environment' => $this->environment,
+			)
+		);
 		if ( is_wp_error( $res ) ) {
 			return $res;
 		}
@@ -246,6 +344,14 @@ class Shasmomo_API {
 		return $token;
 	}
 
+	/**
+	 * Send an authenticated request, refreshing the token once if it was rejected.
+	 *
+	 * @param string     $method HTTP method.
+	 * @param string     $path   Endpoint path, e.g. /enquiry/REF.
+	 * @param array|null $body   JSON body, or null for none.
+	 * @return array|WP_Error Decoded response.
+	 */
 	private function authed( $method, $path, $body = null ) {
 		$token = $this->token();
 		if ( is_wp_error( $token ) ) {
@@ -265,6 +371,12 @@ class Shasmomo_API {
 		return $res;
 	}
 
+	/**
+	 * Headers for an authenticated request.
+	 *
+	 * @param string $token Access token.
+	 * @return array
+	 */
 	private function headers( $token ) {
 		return array(
 			'Authorization'        => 'Bearer ' . $token,
@@ -274,6 +386,15 @@ class Shasmomo_API {
 		);
 	}
 
+	/**
+	 * Send a request to the Shashura API.
+	 *
+	 * @param string     $method  HTTP method.
+	 * @param string     $path    Endpoint path.
+	 * @param array|null $body    JSON body, or null for none.
+	 * @param array      $headers Request headers.
+	 * @return array|WP_Error Decoded response.
+	 */
 	private function send( $method, $path, $body, $headers ) {
 		if ( '' === $this->base_url ) {
 			return new WP_Error( 'shashura_endpoint', 'Invalid trusted Shashura API endpoint.' );
@@ -283,10 +404,13 @@ class Shasmomo_API {
 			'timeout'     => (int) apply_filters( 'shasmomo_http_timeout', 25 ),
 			'redirection' => 0,
 			'sslverify'   => true,
-			'headers'     => array_merge( array(
-				'Content-Type' => 'application/json',
-				'Accept'       => 'application/json',
-			), $headers ),
+			'headers'     => array_merge(
+				array(
+					'Content-Type' => 'application/json',
+					'Accept'       => 'application/json',
+				),
+				$headers
+			),
 		);
 		if ( null !== $body ) {
 			$args['body'] = wp_json_encode( $body );
@@ -294,7 +418,14 @@ class Shasmomo_API {
 
 		$response = wp_safe_remote_request( $this->base_url . $path, $args );
 		if ( is_wp_error( $response ) ) {
-			return new WP_Error( 'shashura_transport', $response->get_error_message(), array( 'http' => 0, 'api_code' => '' ) );
+			return new WP_Error(
+				'shashura_transport',
+				$response->get_error_message(),
+				array(
+					'http'     => 0,
+					'api_code' => '',
+				)
+			);
 		}
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
@@ -303,14 +434,34 @@ class Shasmomo_API {
 		if ( $code < 200 || $code >= 300 ) {
 			$api_code = is_array( $data ) && isset( $data['code'] ) && is_string( $data['code'] ) ? $data['code'] : '';
 			$message  = is_array( $data ) && isset( $data['message'] ) && is_string( $data['message'] ) ? $data['message'] : 'HTTP ' . $code;
-			return new WP_Error( 'shashura_http', $message, array( 'http' => $code, 'api_code' => $api_code ) );
+			return new WP_Error(
+				'shashura_http',
+				$message,
+				array(
+					'http'     => $code,
+					'api_code' => $api_code,
+				)
+			);
 		}
 		if ( ! is_array( $data ) ) {
-			return new WP_Error( 'shashura_bad_json', 'Unreadable response from Shashura.', array( 'http' => $code, 'api_code' => '' ) );
+			return new WP_Error(
+				'shashura_bad_json',
+				'Unreadable response from Shashura.',
+				array(
+					'http'     => $code,
+					'api_code' => '',
+				)
+			);
 		}
 		return $data;
 	}
 
+	/**
+	 * The data object from a decoded response.
+	 *
+	 * @param array $res Decoded response.
+	 * @return array
+	 */
 	private function data( $res ) {
 		return isset( $res['data'] ) && is_array( $res['data'] ) ? $res['data'] : array();
 	}

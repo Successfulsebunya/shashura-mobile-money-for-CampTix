@@ -7,11 +7,17 @@
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Normalizes, formats and masks Uganda mobile numbers.
+ */
 class Shasmomo_Phone {
 
 	/**
 	 * Normalize to MSISDN digits (2567XXXXXXXX). Returns '' if it is not a UG mobile number.
 	 * Accepts 0772 123 456, 772123456, +256 772 123456, 256772123456.
+	 *
+	 * @param string $input Number as the buyer typed it.
+	 * @return string
 	 */
 	public static function normalize( $input ) {
 		$digits = preg_replace( '/\D+/', '', (string) $input );
@@ -30,12 +36,22 @@ class Shasmomo_Phone {
 		return preg_match( '/^7\d{8}$/', $national ) ? '256' . $national : '';
 	}
 
-	/** +256 772 123 456 */
+	/**
+	 * Format for display: +256 772 123 456.
+	 *
+	 * @param string $msisdn Normalized number.
+	 * @return string
+	 */
 	public static function pretty( $msisdn ) {
 		return '+256 ' . substr( $msisdn, 3, 3 ) . ' ' . substr( $msisdn, 6, 3 ) . ' ' . substr( $msisdn, 9 );
 	}
 
-	/** +256 77* *** 456 */
+	/**
+	 * Mask for display: +256 77* *** 456.
+	 *
+	 * @param string $msisdn Normalized number.
+	 * @return string
+	 */
 	public static function mask( $msisdn ) {
 		return '+256 ' . substr( $msisdn, 3, 2 ) . '* *** ' . substr( $msisdn, -3 );
 	}
