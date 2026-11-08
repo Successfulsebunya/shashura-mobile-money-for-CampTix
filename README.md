@@ -146,6 +146,22 @@ Against each paid order, this plugin stores the payer's registered name, a maske
 | `shasmomo_http_timeout` | `25` | Timeout, in seconds, for calls to the Shashura API. |
 | `shasmomo_base_url` | `https://shashura.com/api/v1` | Trusted deployment override. HTTPS and WordPress safe HTTP validation are required; per-site endpoint settings are ignored. |
 
+## Development
+
+You need PHP 7.4 or newer with the zip extension, and [Composer](https://getcomposer.org/).
+
+```bash
+composer install     # coding standards tools (development only)
+composer test        # run the regression tests in tests/
+composer lint        # check the code against the WordPress Coding Standards (phpcs.xml.dist)
+composer build       # build build/shashura-mobile-money-for-camptix.zip
+php bin/check-zip.php
+```
+
+`composer build` leaves out everything listed in `.distignore` (tests, workflows, screenshots, Composer files and these docs). `bin/check-zip.php` then confirms that every plugin file is in the zip, that no development file got in, and that the plugin version matches the readme's stable tag. GitHub Actions runs both on every push and pull request and keeps the zip as a build artifact.
+
+The plugin has no Composer runtime dependencies, so the zip never includes `vendor/`.
+
 ## Support
 
 For help with a Shashura account, API credentials, or a specific payment, contact Shashura support through the merchant dashboard at [shashura.com](https://shashura.com). For issues with this plugin itself, open an issue in this repository or use the plugin's support forum on WordPress.org.

@@ -1,0 +1,30 @@
+{
+	"name": "techdom/shashura-mobile-money-for-camptix",
+	"description": "Accept MTN and Airtel Mobile Money (Uganda) in CampTix through the Shashura gateway.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"require": {
+		"php": ">=7.4"
+	},
+	"require-dev": {
+		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+		"phpcompatibility/phpcompatibility-wp": "^2.1",
+		"wp-coding-standards/wpcs": "^3.1"
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		}
+	},
+	"scripts": {
+		"lint": "phpcs",
+		"lint:fix": "phpcbf",
+		"test": [
+			"@php tests/refund.php",
+			"@php tests/refund_confirmation.php",
+			"@php tests/mismatch.php",
+			"@php tests/endpoint.php"
+		],
+		"build": "@php bin/build-zip.php"
+	}
+}

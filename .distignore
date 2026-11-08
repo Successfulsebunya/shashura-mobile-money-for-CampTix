@@ -9,3 +9,9 @@
 /RECONCILIATION.md
 /REFUND-RECOVERY.md
 /screenshot-*.png
+/bin
+/build
+/vendor
+/composer.json
+/composer.lock
+/phpcs.xml.dist
