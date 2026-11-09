@@ -65,9 +65,13 @@ try {
 	$other = new Shasmomo_API( 'invented-client', 'invented-secret', 'sandbox' );
 	shasmomo_integration_check( $base_key !== $key->invoke( $other ), 'token cache bound to effective endpoint' );
 	$endpoint = 'https://public.shasmomo.test/api';
-	$first_token = $token->invoke( $api, true );
+	$home_site_id = get_current_blog_id();
 	$site = wpmu_create_blog( 'example.test', '/endpoint-fixture/', 'Endpoint fixture', 1 );
 	shasmomo_integration_check( ! is_wp_error( $site ), 'second site created' );
+	shasmomo_integration_check( $home_site_id === get_current_blog_id(), 'site creation restores initial context' );
+	// Seed after installation: site initialization may invalidate runtime caches.
+	$first_token = $token->invoke( $api, true );
+	shasmomo_integration_check( ! is_wp_error( $first_token ) && $first_token === $token->invoke( $api, false ), 'site A caches its fixture token before switching' );
 	switch_to_blog( $site );
 	try {
 		shasmomo_integration_check( false === get_transient( $base_key ), 'site B cannot read site A token transient' );
@@ -76,6 +80,7 @@ try {
 	} finally {
 		restore_current_blog();
 	}
+	shasmomo_integration_check( $home_site_id === get_current_blog_id(), 'site context restored after second-site test' );
 	shasmomo_integration_check( $first_token === $token->invoke( $api, false ), 'restoring site A restores its own token cache' );
 } finally {
 	remove_action( 'requests-requests.before_request', $transport, 10 );
