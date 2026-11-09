@@ -36,11 +36,28 @@ function shasmomo_uninstall_site() {
 }
 
 if ( is_multisite() ) {
-	foreach ( get_sites( array( 'fields' => 'ids' ) ) as $shasmomo_site_id ) {
-		switch_to_blog( $shasmomo_site_id );
-		shasmomo_uninstall_site();
-		restore_current_blog();
-	}
+	// WP_Site_Query defaults to 100 results; paginate to reach every site without
+	// loading a potentially enormous network into memory all at once.
+	$shasmomo_page_size = 100;
+	$shasmomo_offset    = 0;
+	do {
+		$shasmomo_ids = get_sites(
+			array(
+				'fields' => 'ids',
+				'number' => $shasmomo_page_size,
+				'offset' => $shasmomo_offset,
+			)
+		);
+		foreach ( $shasmomo_ids as $shasmomo_site_id ) {
+			switch_to_blog( $shasmomo_site_id );
+			try {
+				shasmomo_uninstall_site();
+			} finally {
+				restore_current_blog();
+			}
+		}
+		$shasmomo_offset += count( $shasmomo_ids );
+	} while ( count( $shasmomo_ids ) === $shasmomo_page_size );
 } else {
 	shasmomo_uninstall_site();
 }
