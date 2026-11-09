@@ -15,7 +15,7 @@ The plugin connects CampTix to the Shashura Mobile Money API and handles the ful
 ## How a payment works
 
 1. The buyer selects Mobile Money at checkout and enters their MTN or Airtel number.
-2. The number is verified against the network before anything is charged, and the registered account name is shown to the buyer for confirmation.
+2. The number is verified against the network before anything is charged. The registered subscriber name is hidden by default; site administrators may opt to show a partial or full name.
 3. A PIN prompt is pushed to the buyer's phone for the exact order total.
 4. The plugin confirms the payment with Shashura directly rather than trusting the browser or an incoming webhook on their own. Both only trigger a check; only a status enquiry whose reference and amount match the order can mark it paid.
 5. Once confirmed, the buyer is taken to their CampTix ticket page and receives CampTix's standard confirmation email.
@@ -126,6 +126,8 @@ What is sent, and when:
 This service is provided by Shashura (operated by Techdom Digital Solutions): [Terms of Service](https://shashura.com/terms) · [Privacy Policy](https://shashura.com/privacy).
 
 ## Privacy
+
+**Subscriber-name visibility:** A checkout visitor can enter a supported Ugandan phone number that does not belong to them. Shashura's number verification can return the account holder's registered name. By default, this plugin does not display that name to the visitor. Site administrators may opt in to a partial or full name under Tickets → Setup → Payment → Account name shown to buyer. Showing a name can disclose personal information to third parties; describe this behaviour in the event site's privacy notice. Rate limiting reduces automated enumeration but does not verify number ownership. The gateway may still return and the plugin may temporarily store the name for payment processing even when its display is disabled.
 
 While a payment request is open, the plugin keeps the buyer's full mobile number. Once the request is settled (paid, failed or rejected), only a masked number (+256 77* *** 456) is kept.
 
