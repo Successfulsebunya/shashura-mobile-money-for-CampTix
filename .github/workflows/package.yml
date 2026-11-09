@@ -1,0 +1,19 @@
+name: Plugin zip
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: zip
+      - run: php bin/build-zip.php
+      - run: php bin/check-zip.php
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shashura-mobile-money-for-camptix
+          path: build/shashura-mobile-money-for-camptix.zip

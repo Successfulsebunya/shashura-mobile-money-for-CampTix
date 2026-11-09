@@ -1,0 +1,21 @@
+# Kept out of the plugin zip (wp dist-archive and the usual WordPress.org deploy actions read this).
+/.git
+/.github
+/.gitignore
+/.gitattributes
+/.editorconfig
+/.distignore
+/tests
+/README.md
+/CONTRIBUTING.md
+/SECURITY.md
+/ENDPOINT-POLICY.md
+/RECONCILIATION.md
+/REFUND-RECOVERY.md
+/screenshot-*.png
+/bin
+/build
+/vendor
+/composer.json
+/composer.lock
+/phpcs.xml.dist
