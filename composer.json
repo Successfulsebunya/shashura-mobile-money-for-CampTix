@@ -19,12 +19,7 @@
 	"scripts": {
 		"lint": "phpcs",
 		"lint:fix": "phpcbf",
-		"test": [
-			"@php tests/refund.php",
-			"@php tests/refund_confirmation.php",
-			"@php tests/mismatch.php",
-			"@php tests/endpoint.php"
-		],
+		"test": "@php bin/test.php",
 		"build": "@php bin/build-zip.php"
 	}
 }

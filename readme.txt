@@ -182,7 +182,7 @@ For help with a Shashura account, API credentials, or a specific payment, contac
 
 = Testing =
 
-An automated end-to-end suite (92 checks) has been run against WordPress with both current CampTix (2.x) and CampTix 1.4.x, covering the full payment lifecycle: KYC errors, underpayment, wrong reference, forged or replayed webhooks, double approval, telco rejection, token expiry, cancel races, concurrent webhook and browser settlement, the timeout sweep, rate limits, and privacy export/erase. An independent security review of the code and a live test deployment was also carried out, with every finding fixed and covered by the test suite.
+The public repository contains standalone regression tests with in-memory WordPress/CampTix doubles and mocked gateway responses. Run `php bin/test.php` or `composer test`; GitHub Actions runs the suite on PHP 7.4, 8.2 and 8.4. Coverage and remaining integration gaps are documented in [tests/README.md](https://github.com/Techdom-Digital-Solutions-U-limited/shashura-mobile-money-for-CampTix/blob/main/tests/README.md). The historical 92-check end-to-end suite and independent security-review report are not published here; the public regressions do not substantiate those claims.
 
 = Credits =
 
