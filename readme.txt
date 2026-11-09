@@ -1,6 +1,6 @@
 === Shashura Mobile Money for CampTix ===
-Contributors: cipherwave, ssebuwufumoses
-Tags: camptix, shashura, mobile money, mtn, airtel, uganda
+Contributors: cipherwave, ssebuwufumoses, mosescursor
+Tags: camptix, mobile money, mtn, airtel, uganda
 Requires at least: 5.8
 Tested up to: 7.1
 Requires PHP: 7.4
@@ -8,7 +8,7 @@ Stable tag: 1.0.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Accept MTN and Airtel Mobile Money for CampTix ticket sales in Uganda, settled through the Shashura payment gateway. Not affiliated with or endorsed by CampTix.
+Accept MTN and Airtel Mobile Money for CampTix ticket sales in Uganda through the Shashura gateway. Not affiliated with or endorsed by CampTix.
 
 == Description ==
 
@@ -44,7 +44,7 @@ The plugin connects CampTix to the Shashura Mobile Money API and handles the ful
 == Installation ==
 
 1. Install and activate CampTix. Under Tickets → Setup → General, set the ticket currency to UGX.
-2. Upload the plugin zip file under Plugins → Add New → Upload Plugin, then activate it.
+2. Under Plugins → Add New, search for "Shashura Mobile Money for CampTix", then install and activate it. You can also upload the plugin zip under Plugins → Add New → Upload Plugin.
 3. Go to Tickets → Setup → Payment and open the Mobile Money (MTN / Airtel) section:
    * Set Enabled to Yes.
    * Enter the Client ID and Client Secret from your Shashura app (see "Getting Your Shashura API Credentials" below).
@@ -115,7 +115,7 @@ A Shashura merchant account, with an app's Client ID and Client Secret, is requi
 
 == Screenshots ==
 
-1. Payment configuration under CampTix → Setup → Payment: credentials, environment selection, and live connection status.
+1. Payment configuration under Tickets → Setup → Payment: credentials, environment selection, and live connection status.
 2. The buyer-facing checkout flow, from entering a mobile number through to the CampTix ticket page.
 3. An optional "Powered by Shashura" footer, shown here on the PIN-approval step. Off by default; the site administrator can turn it on from the payment settings.
 
@@ -183,7 +183,7 @@ An automated end-to-end suite (92 checks) has been run against WordPress with bo
 = Credits =
 
 * **Developed and maintained by:** Techdom Digital Solutions ([https://techdom.io](https://techdom.io))
-* **Contributors:** Cipherwave Software Limited ([https://cipherwavesolutions.com](https://cipherwavesolutions.com)), Moses Ssebuwufu ([ssebuwufumoses](https://profiles.wordpress.org/ssebuwufumoses/) on WordPress.org, [@ssebuwufumoses](https://github.com/ssebuwufumoses) on GitHub)
+* **Contributors:** Cipherwave Software Limited ([https://cipherwavesolutions.com](https://cipherwavesolutions.com)), Moses Ssebuwufu ([ssebuwufumoses](https://profiles.wordpress.org/ssebuwufumoses/) on WordPress.org, [@ssebuwufumoses](https://github.com/ssebuwufumoses) on GitHub), Moses Cursor Ssebunya ([mosescursor](https://profiles.wordpress.org/mosescursor/) on WordPress.org, [@Successfulsebunya](https://github.com/Successfulsebunya) on GitHub)
 * **Trademarks:** The MTN MoMo and Airtel Money logos in `assets/images` are trademarks of MTN and Airtel.
 
 = Developer Filters =
@@ -191,8 +191,12 @@ An automated end-to-end suite (92 checks) has been run against WordPress with bo
 The following filters are available to adjust plugin behaviour from a theme or another plugin:
 
 * `shasmomo_lookups_per_ip` (default 20): number verification checks allowed per visitor IP per hour.
+* `shasmomo_lookups_per_number` (default 3): number verification checks allowed per phone number per hour, across all orders.
 * `shasmomo_lookups_alert` (default 300): site-wide number verification checks per hour that trigger an admin email.
 * `shasmomo_client_ip`: overrides the IP address used for rate limiting.
 * `shasmomo_accent_color` (default #1d4ed8): accent colour used on the payment pages.
+* `shasmomo_merchant_logo` (default: Site Icon, then Custom Logo): image shown in the payment page header.
+* `shasmomo_network_logo` (default: bundled MTN MoMo or Airtel Money logo): image URL for a network logo (`mtn` or `airtel`). Return an empty string to show the coloured badge with the network name instead.
+* `shasmomo_template` (default: the plugin's `templates/` folder): path of a payment page template. Themes can also override one by copying it to `your-theme/shashura-mobile-money-for-camptix/`.
 * `shasmomo_http_timeout` (default 25): timeout, in seconds, for calls to the Shashura API.
 * `shasmomo_base_url` (default https://shashura.com/api/v1): trusted deployment override requiring HTTPS and WordPress safe HTTP validation. Per-site endpoint settings are ignored.
