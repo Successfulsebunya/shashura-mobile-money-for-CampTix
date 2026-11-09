@@ -14,3 +14,4 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
       - run: php tests/mismatch.php
+      - run: php tests/cancel_pending.php
