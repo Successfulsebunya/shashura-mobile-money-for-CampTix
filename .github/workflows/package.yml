@@ -13,6 +13,7 @@ jobs:
           extensions: zip
       - run: php bin/build-zip.php
       - run: php bin/check-zip.php
+      - run: php tests/package.php
       - uses: actions/upload-artifact@v4
         with:
           name: shashura-mobile-money-for-camptix

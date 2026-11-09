@@ -34,6 +34,9 @@ foreach ( $in_zip as $name ) {
 	if ( 0 !== strpos( $name, $slug . '/' ) ) {
 		$errors[] = "Outside the $slug/ folder: $name";
 	}
+	if ( preg_match( '#(^|/)(\.{1,2})(/|$)#', $name ) || false !== strpos( $name, '\\' ) ) {
+		$errors[] = "Unsafe archive path: $name";
+	}
 }
 
 // Nothing excluded by .distignore made it in.
@@ -45,7 +48,7 @@ foreach ( $in_zip as $name ) {
 }
 
 // Development files stay out even if a line goes missing from .distignore.
-$never = array( '.git', '.github', '.distignore', '.gitignore', '.gitattributes', '.editorconfig', 'tests', 'bin', 'build', 'vendor', 'README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'composer.json', 'composer.lock', 'phpcs.xml.dist', 'screenshot-*.png' );
+$never = array( '.git', '.github', '.distignore', '.gitignore', '.gitattributes', '.editorconfig', 'tests', 'bin', 'build', 'vendor', 'README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'ENDPOINT-POLICY.md', 'RECONCILIATION.md', 'REFUND-RECOVERY.md', 'composer.json', 'composer.lock', 'phpcs.xml.dist', 'screenshot-*.png' );
 foreach ( $in_zip as $name ) {
 	$rel = substr( $name, strlen( $slug ) + 1 );
 	foreach ( $never as $pattern ) {
