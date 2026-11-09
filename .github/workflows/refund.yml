@@ -14,3 +14,4 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
       - run: php tests/refund.php
+      - run: php tests/refund_confirmation.php
