@@ -699,6 +699,20 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		return $state;
 	}
 
+	/**
+	 * Cancellation is safe only when no charge is outstanding.
+	 *
+	 * Releasing inventory while a PIN prompt is still pending permits its late
+	 * approval to republish a cancelled order after the seat has been sold.
+	 * Unknown/lost outcomes are deliberately not treated as confirmed failures.
+	 *
+	 * @param array $rec Reconciled payment attempts.
+	 * @return bool
+	 */
+	private function can_cancel( $rec ) {
+		return empty( $rec['attempts'] ) || $this->all_failed( $rec );
+	}
+
 	/** True when every attempt has a final, unpaid answer from Shashura. */
 	private function all_failed( $rec ) {
 		foreach ( $rec['attempts'] as $a ) {
@@ -1453,8 +1467,10 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 
 		// Decided under the order lock: if any prompt was approved the order completes instead,
 		// and a webhook recording a payment right now can't be overwritten by this cancel.
-		$state = $this->settle( $ctx, true, true, function ( $ctx ) {
-			if ( 'draft' === $ctx['status'] ) {
+		$state = $this->settle( $ctx, true, true, function ( $ctx, $rec ) {
+			// An unconfirmed PIN prompt can still be approved after cancellation.
+			// Keep the seat reserved until Shashura confirms every prompt failed.
+			if ( 'draft' === $ctx['status'] && $this->can_cancel( $rec ) ) {
 				$this->report( $ctx['token'], CampTix_Plugin::PAYMENT_STATUS_CANCELLED, array(), true );
 				die();
 			}
@@ -1464,6 +1480,14 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			// Something is recording this order right now. Let the waiting page show the outcome.
 			wp_safe_redirect( $this->url( 'shashura_wait', $ctx['token'] ) );
 			die();
+		}
+		if ( in_array( $state, array( 'pending', 'failed' ), true ) ) {
+			// A latest failed attempt does not prove an older prompt is settled.
+			$this->render_message(
+				__( 'Payment is still being checked', 'shashura-mobile-money-for-camptix' ),
+				__( 'Your order cannot be cancelled while a Mobile Money prompt may still be approved. Please let the prompt expire or contact the organiser before trying again.', 'shashura-mobile-money-for-camptix' ),
+				200
+			);
 		}
 		$this->guard_draft( $this->load( $ctx['token'] ) );
 		$this->redirect_to_tickets( $ctx );
