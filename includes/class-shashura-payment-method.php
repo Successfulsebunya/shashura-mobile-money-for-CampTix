@@ -12,7 +12,10 @@
  * Safety rules
  *  - Only Shashura's /enquiry decides that an order is paid. Browser requests and webhook
  *    bodies are only hints that tell us *when* to ask.
- *  - Paid means: state TS, external_ref equal to our reference, amount equal to the order total.
+ *  - Paid means: a TS status enquiry for our attempt reference, with an amount matching both
+ *    the requested attempt and the order total. If the attempt already has a Shashura
+ *    transaction ID (tid), an enquiry returning a different tid is ignored.
+ *    The external_ref field can change after settlement, so it is not compared.
  *  - Every attempt of an order is reconciled, so a buyer who approves an older prompt is
  *    still recognised (and a second paid attempt is flagged for refund).
  *  - Orders are never set to "pending" (CampTix would hold the seats forever). They stay

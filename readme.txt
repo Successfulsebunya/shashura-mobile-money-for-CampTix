@@ -23,7 +23,7 @@ The plugin connects CampTix to the Shashura Mobile Money API and handles the ful
 1. The buyer selects Mobile Money at checkout and enters their MTN or Airtel number.
 2. The number is verified against the network before anything is charged. The registered name is hidden by default; site administrators may choose partial or full display.
 3. A PIN prompt is pushed to the buyer's phone for the exact order total.
-4. The plugin confirms the payment with Shashura directly rather than trusting the browser or an incoming webhook on their own. Both only trigger a check; only a status enquiry whose reference and amount match the order can mark it paid.
+4. The plugin confirms the payment with Shashura directly rather than trusting the browser or an incoming webhook on their own. Both only trigger a check; only a successful status enquiry for the stored payment attempt, with the expected amount and (where already known) matching Shashura transaction ID, can mark it paid. The gateway may replace external_ref after settlement, so it is not used as a post-settlement equality check.
 5. Once confirmed, the buyer is taken to their CampTix ticket page and receives CampTix's standard confirmation email.
 
 = Reliability and safety =
