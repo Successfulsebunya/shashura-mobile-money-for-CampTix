@@ -644,8 +644,33 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			}
 		}
 
-		$paid = array_values( array_filter( $attempts, function ( $a ) {
-			return 'paid' === $a['status'];
+		// Enquiries can outlast the reservation. Re-read after the network calls;
+		// a plugin order lock is not CampTix's inventory/timeout lock.
+		$can_fulfil = $this->reservation_retained( $ctx );
+		foreach ( $attempts as $i => $a ) {
+			if ( 'paid' !== $a['status'] ) {
+				continue;
+			}
+			if ( ! $can_fulfil && empty( $a['fulfilment_hold'] ) ) {
+				$attempts[ $i ]['fulfilment_hold'] = time();
+				$this->save( $ctx, '_shashura_attempts', $attempts );
+			}
+			if ( ! empty( $attempts[ $i ]['fulfilment_hold'] ) && empty( $a['fulfilment_alerted'] ) ) {
+				$attempts[ $i ]['fulfilment_alerted'] = time();
+				$this->save( $ctx, '_shashura_attempts', $attempts );
+				$camptix->log( 'Mobile Money collected after the reservation was released or could not be verified. No ticket issued; manual reconciliation required.', $ctx['first'], array( 'ref' => $a['ref'], 'tid' => $a['tid'], 'amount' => $a['paid_amount'] ), 'payment' );
+				wp_mail(
+					get_option( 'admin_email' ),
+					'CampTix late Mobile Money payment: no ticket issued',
+					sprintf( 'Payment %s (transaction %s) collected UGX %d after its reservation was released or could not be verified. No tickets were issued. Do not charge the buyer again. Check capacity and reconcile manually, or refund this collection in the Shashura dashboard. Order: %s', $a['ref'], $a['tid'], $a['paid_amount'], admin_url( 'post.php?post=' . $ctx['first'] . '&action=edit' ) )
+				);
+			}
+		}
+		$has_hold = (bool) array_filter( $attempts, function ( $a ) {
+			return ! empty( $a['fulfilment_hold'] );
+		} );
+		$paid = array_values( array_filter( $attempts, function ( $a ) use ( $has_hold ) {
+			return ! $has_hold && 'paid' === $a['status'];
 		} ) );
 
 		return array(
@@ -653,6 +678,34 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			'latest'   => $attempts ? end( $attempts ) : null,
 			'attempts' => $attempts,
 		);
+	}
+
+	/**
+	 * Fail closed once a seat may have been released. Do not reallocate inventory
+	 * with a count-then-publish check: that would race another checkout.
+	 */
+	private function reservation_retained( $ctx ) {
+		global $camptix;
+		foreach ( $ctx['ids'] as $id ) {
+			clean_post_cache( $id );
+			$status = get_post_status( $id );
+			if ( in_array( $status, array( 'publish', 'pending' ), true ) ) {
+				continue;
+			}
+			if ( 'draft' !== $status ) {
+				return false;
+			}
+			if ( method_exists( $camptix, 'get_draft_release_at' ) ) {
+				$release = (int) $camptix->get_draft_release_at( $id );
+			} else {
+				$created = (int) get_post_meta( $id, 'tix_timestamp', true );
+				$release = $created > 0 ? $created + DAY_IN_SECONDS : 0;
+			}
+			if ( $release <= time() ) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
@@ -1023,7 +1076,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	/** A collected amount mismatch is not a declined payment. */
 	private function needs_reconciliation( $attempts ) {
 		foreach ( $attempts as $a ) {
-			if ( 'mismatch' === $a['status'] ) {
+			if ( 'mismatch' === $a['status'] || ! empty( $a['fulfilment_hold'] ) ) {
 				return true;
 			}
 		}
@@ -1033,7 +1086,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	private function reconciliation_message() {
 		$this->render_message(
 			__( 'Payment needs reconciliation', 'shashura-mobile-money-for-camptix' ),
-			__( 'A payment was collected for a different amount. Please do not pay again. Contact the organiser to reconcile your payment or arrange a refund.', 'shashura-mobile-money-for-camptix' ),
+			__( 'A payment was collected, but your tickets could not be confirmed. Please do not pay again. Contact the organiser to reconcile your payment or arrange a refund.', 'shashura-mobile-money-for-camptix' ),
 			200
 		);
 	}
@@ -1051,7 +1104,10 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		}
 		// Cancelled, failed or timed out, but a prompt may have been approved since: ask first.
 		if ( in_array( $ctx['status'], array( 'cancel', 'failed', 'timeout' ), true ) && $ctx['attempts'] && $this->can_recover( $ctx ) ) {
-			$this->settle( $ctx, true, true ); // Redirects to the tickets when it recovers a payment.
+			$state = $this->settle( $ctx, true, true );
+			if ( 'reconciliation' === $state ) {
+				$this->reconciliation_message();
+			}
 		}
 		$this->render_message(
 			__( 'This order is closed', 'shashura-mobile-money-for-camptix' ),
@@ -1061,10 +1117,10 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		);
 	}
 
-	/** CampTix 1.x can't record a result for a timed-out order. */
-	private function can_recover( $ctx ) {
-		global $camptix;
-		return 'timeout' !== $ctx['status'] || method_exists( $camptix, 'set_order_session_expiry' );
+	/** Closed orders remain queryable for evidence, without automatic reopening. */
+	private function can_recover( $ctx ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+
+		return true; // Closed orders are enquired for evidence, but never automatically reopened.
 	}
 
 	private function redirect_to_tickets( $ctx ) {
@@ -1386,7 +1442,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 			} else {
 				$state = 'closed';
 			}
-			if ( ! $open && 'paid' !== $state ) {
+			if ( ! $open && ! in_array( $state, array( 'paid', 'reconciliation' ), true ) ) {
 				$state = 'closed';
 			}
 			if ( 'busy' === $state || 'none' === $state ) {
@@ -2033,7 +2089,7 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 				'network'   => __( 'Network', 'shashura-mobile-money-for-camptix' ),
 				'amount'    => __( 'Amount', 'shashura-mobile-money-for-camptix' ),
 				'reference' => __( 'Reference', 'shashura-mobile-money-for-camptix' ),
-				'reconciliation' => __( 'Payment collected for a different amount. Do not pay again; contact the organiser.', 'shashura-mobile-money-for-camptix' ),
+				'reconciliation' => __( 'Payment collected; tickets need reconciliation. Do not pay again; contact the organiser.', 'shashura-mobile-money-for-camptix' ),
 				'failed'    => __( 'Declined or expired.', 'shashura-mobile-money-for-camptix' ),
 				'slow'      => __( 'Still waiting. Keep this page open.', 'shashura-mobile-money-for-camptix' ),
 				'expired'   => __( 'No approval yet. Resend the prompt.', 'shashura-mobile-money-for-camptix' ),

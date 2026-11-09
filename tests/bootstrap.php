@@ -8,7 +8,8 @@ function is_wp_error($x){return $x instanceof WP_Error;}
 function get_post_meta($id,$key,$single=true){return $GLOBALS['meta'][$id][$key]??'';}
 function update_post_meta($id,$key,$v){$GLOBALS['meta'][$id][$key]=$v;return true;}
 function delete_post_meta($id,$key){unset($GLOBALS['meta'][$id][$key]);return true;}
-function get_post_status($id){return $GLOBALS['status'];}
+function get_post_status($id){return $GLOBALS['statuses'][$id]??$GLOBALS['status'];}
+function clean_post_cache($id){}
 function get_posts($args){return [1];}
 function get_transient($k){return $GLOBALS['cache'][$k]??false;}
 function set_transient($k,$v,$ttl){$GLOBALS['cache'][$k]=$v;}
@@ -38,6 +39,7 @@ class CampTix_Plugin {
  public $logs=[]; public $reports=[];
  function log(...$args){$this->logs[]=$args;}
  function get_post_meta_from_payment_token($token,$key){return 'mock-tid';}
+ function get_draft_release_at($id){return (int)(get_post_meta($id,'tix_session_expires_at')?:((int)get_post_meta($id,'tix_timestamp')+DAY_IN_SECONDS));}
  function payment_result($token,$result,$data,$interactive=true){$this->reports[]=[$token,$result,$data];return $result;}
 }
 $GLOBALS['camptix']=new CampTix_Plugin;
@@ -48,7 +50,7 @@ class CampTix_Payment_Method {
 class Shasmomo_API {
  public static $response; public static $refundResponse; public static $refundCalls=0; public static $enquiries=0;
  function __construct(...$args){}
- function enquiry($ref){self::$enquiries++;return self::$response;}
+ function enquiry($ref){self::$enquiries++;if(isset($GLOBALS['during_enquiry']))call_user_func($GLOBALS['during_enquiry']);return self::$response;}
  function refund(...$args){self::$refundCalls++;return self::$refundResponse;}
  static function error_code($e){return 'mock';}
  static function http_status($e){return 0;}
@@ -61,6 +63,7 @@ function invoke($object,$name,...$args){$method=new ReflectionMethod($object,$na
 function method(){ $m=new Shasmomo_Payment_Method; $p=new ReflectionProperty($m,'options');if(PHP_VERSION_ID<80100)$p->setAccessible(true);$p->setValue($m,['client_id'=>'mock','client_secret'=>'mock','environment'=>'sandbox','webhook_secret'=>'mock','base_url'=>'']); return $m; }
 function fixture($amount=100){
  $GLOBALS['meta']=[1=>['tix_payment_method'=>'shashura','_shashura_attempts'=>[['status'=>'sent','ref'=>'CTXMOCK','tid'=>'mock-tid','amount'=>100,'created'=>time(),'msisdn'=>'256770000000','name'=>'Test Name','network'=>'MTN','env'=>'sandbox']]]];
+ $GLOBALS['meta'][1]['tix_timestamp']=time();unset($GLOBALS['during_enquiry'],$GLOBALS['statuses']);
  $GLOBALS['status']='draft';$GLOBALS['mail']=[];$GLOBALS['cache']=[];$GLOBALS['wpdb']->locks=[];$GLOBALS['camptix']->reports=[];
  Shasmomo_API::$enquiries=0; Shasmomo_API::$refundCalls=0;
  Shasmomo_API::$response=['state'=>'paid','raw_state'=>'TS','amount'=>$amount,'external_ref'=>'telco-ref','tid'=>'mock-tid','network_ref'=>'mock-network'];
