@@ -32,7 +32,7 @@ The plugin connects CampTix to the Shashura Mobile Money API and handles the ful
 * A duplicate payment on the same order is detected and flagged to the site administrator for a manual refund, rather than accepted or dropped silently.
 * Incoming webhooks are verified against an HMAC-SHA256 signature. Unsigned, forged, oversized or mismatched-environment events are rejected.
 * A per-order lock stops the webhook, the buyer's browser, an order cancellation and CampTix's own timeout sweep from recording conflicting outcomes for the same order at the same time.
-* A payment approved after its reservation was released is retained for manual reconciliation, with an organiser alert. It does not automatically issue tickets or ask the buyer to pay again.
+* A payment approved after an order was cancelled or timed out is still recognised and completes the order.
 * Works with current CampTix (2.x), the version WordCamp.org runs. CampTix 1.4.x also works, with one known limitation: when a webhook settles an order, CampTix 1.x ends the request itself, so Shashura gets an empty reply instead of the plugin's response. The order is still updated.
 
 = Requirements =
