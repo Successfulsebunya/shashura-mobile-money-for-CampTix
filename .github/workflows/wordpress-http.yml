@@ -1,0 +1,50 @@
+name: WordPress HTTP and multisite integration
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  wordpress:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-password
+          MYSQL_DATABASE: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -pfixture-password"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    strategy:
+      matrix:
+        include:
+          - php: '7.4'
+            wordpress: '5.8'
+          - php: '8.2'
+            wordpress: 'latest'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli
+          tools: wp-cli
+      - name: Install disposable multisite
+        env:
+          WP_VERSION: ${{ matrix.wordpress }}
+        run: |
+          wp core download --version="$WP_VERSION" --path="$RUNNER_TEMP/wordpress"
+          wp config create --path="$RUNNER_TEMP/wordpress" --dbname=wordpress --dbuser=root --dbpass=fixture-password --dbhost=127.0.0.1:3306
+          wp core multisite-install --path="$RUNNER_TEMP/wordpress" --url=http://example.test --title=Fixture --admin_user=fixture --admin_password=fixture-only-password --admin_email=fixture@example.test --skip-email
+          printf '93.184.216.34 public.shasmomo.test\n127.0.0.1 private.shasmomo.test\n' | sudo tee -a /etc/hosts
+      - name: Validate core HTTP and site isolation without gateway sockets
+        run: wp --path="$RUNNER_TEMP/wordpress" eval-file "$GITHUB_WORKSPACE/tests/integration/endpoint.php"
+      - name: Reject hostname after DNS changes to private
+        run: |
+          sudo python3 - <<'PY'
+          from pathlib import Path
+          p = Path('/etc/hosts')
+          p.write_text(p.read_text().replace('93.184.216.34 public.shasmomo.test', '10.0.0.8 public.shasmomo.test'))
+          PY
+          SHASMOMO_DNS_PRIVATE=1 wp --path="$RUNNER_TEMP/wordpress" eval-file "$GITHUB_WORKSPACE/tests/integration/endpoint.php"
