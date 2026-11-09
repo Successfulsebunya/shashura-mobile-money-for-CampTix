@@ -741,8 +741,6 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 					'tid'                => $p['tid'],
 					'network_ref'        => isset( $p['network_ref'] ) ? $p['network_ref'] : '',
 					'network'            => $p['network'],
-					'payer_name'         => $p['name'],
-					'payer_number'       => $this->masked( $p ),
 					'amount'             => $p['paid_amount'],
 					'duplicate_payments' => count( $rec['paid'] ) > 1 ? wp_list_pluck( array_slice( $rec['paid'], 1 ), 'ref' ) : array(),
 				),
@@ -1075,10 +1073,26 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 		}
 
 		// KYC reveals a subscriber's registered name, so it must not become a lookup service.
-		if ( $ctx['lookups'] >= self::MAX_LOOKUPS || ! $this->ip_allowance() || ! $this->number_allowance( $msisdn ) ) {
+		// Every limit is checked before any is counted, so a refused lookup uses up nothing.
+		// The per-order count is read and raised under the order lock, so parallel posts
+		// can't go past MAX_LOOKUPS. The IP and number counters are shared across orders
+		// and stay best-effort.
+		$lock = $this->lock( $ctx['token'] );
+		if ( ! $lock ) {
+			$this->render_phone( $ctx, __( 'Please try again in a moment.', 'shashura-mobile-money-for-camptix' ) );
+		}
+		$fresh   = $this->load( $ctx['token'] );
+		$lookups = $fresh ? $fresh['lookups'] : $ctx['lookups'];
+		$allowed = $lookups < self::MAX_LOOKUPS && $this->ip_allowance( false ) && $this->number_allowance( $msisdn, false );
+		if ( $allowed ) {
+			$this->save( $ctx, '_shashura_lookups', $lookups + 1 );
+			$this->ip_allowance();
+			$this->number_allowance( $msisdn );
+		}
+		$this->unlock( $lock );
+		if ( ! $allowed ) {
 			$this->render_phone( $ctx, __( 'Too many number checks. Please wait a while and try again.', 'shashura-mobile-money-for-camptix' ) );
 		}
-		$this->save( $ctx, '_shashura_lookups', $ctx['lookups'] + 1 );
 
 		$kyc = $this->api()->kyc( $msisdn );
 		if ( is_wp_error( $kyc ) ) {
@@ -1239,12 +1253,16 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	 * Counts a KYC lookup against the per-number hourly budget. The per-IP limit alone can be
 	 * spread over many IPs; this stops the same number being looked up again and again.
 	 * The number is hashed with a salt so it isn't readable in the options table.
+	 * With $count false it only checks, without using up the budget.
 	 */
-	private function number_allowance( $msisdn ) {
+	private function number_allowance( $msisdn, $count = true ) {
 		$key = 'shasmomo_kycn_' . md5( wp_salt( 'nonce' ) . $msisdn . '|' . gmdate( 'YmdH' ) );
 		$n   = (int) get_transient( $key );
 		if ( $n >= (int) apply_filters( 'shasmomo_lookups_per_number', self::LOOKUPS_PER_NUMBER ) ) {
 			return false;
+		}
+		if ( ! $count ) {
+			return true;
 		}
 		set_transient( $key, $n + 1, HOUR_IN_SECONDS );
 		return true;
@@ -1253,13 +1271,17 @@ class Shasmomo_Payment_Method extends CampTix_Payment_Method {
 	/**
 	 * Counts a KYC lookup against the per-IP hourly budget. Site-wide volume only raises an
 	 * admin alert: a hard site cap would let an attacker with a few IPs block every buyer.
+	 * With $count false it only checks, without using up the budget.
 	 */
-	private function ip_allowance() {
+	private function ip_allowance( $count = true ) {
 		$hour = gmdate( 'YmdH' );
 		$key  = 'shasmomo_kyc_' . md5( $this->client_ip() . '|' . $hour );
 		$n    = (int) get_transient( $key );
 		if ( $n >= (int) apply_filters( 'shasmomo_lookups_per_ip', self::LOOKUPS_PER_IP ) ) {
 			return false;
+		}
+		if ( ! $count ) {
+			return true;
 		}
 		set_transient( $key, $n + 1, HOUR_IN_SECONDS );
 

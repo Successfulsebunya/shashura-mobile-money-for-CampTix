@@ -133,6 +133,8 @@ While a payment request is open, the plugin keeps the buyer's full mobile number
 
 Against each paid order, this plugin stores the payer's registered name, a masked mobile number, the mobile network, and the Shashura transaction reference, for reconciliation and support. Stored phone numbers and names are included in WordPress's own **Tools → Export Personal Data** and **Erase Personal Data** tools, so data-subject requests are handled through core WordPress, not a separate process. This plugin never handles or stores card numbers, mobile money PINs, or Shashura account credentials.
 
+CampTix writes each payment result to its own order log, which WordPress's Erase Personal Data tool does not reach. The payer's name and masked number are therefore not included in the payment data this plugin passes to CampTix. Log entries written by earlier versions may still contain them; if a person asks for erasure, those entries have to be cleaned up in the database. The name and number kept on the payment attempt itself are still covered by the export and erase tools.
+
 ## Developer filters
 
 | Filter | Default | Description |
