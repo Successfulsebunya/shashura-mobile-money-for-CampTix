@@ -32,7 +32,6 @@ The plugin connects CampTix to the Shashura Mobile Money API and handles the ful
 * A duplicate payment on the same order is detected and flagged to the site administrator for a manual refund, rather than accepted or dropped silently.
 * Incoming webhooks are verified against an HMAC-SHA256 signature. Unsigned, forged, oversized or mismatched-environment events are rejected.
 * A per-order lock stops the webhook, the buyer's browser, an order cancellation and CampTix's own timeout sweep from recording conflicting outcomes for the same order at the same time.
-* A payment approved after an order was cancelled or timed out is still recognised and completes the order.
 * Requires CampTix with non-interactive payment results (the four-argument API in current CampTix 2.x). CampTix 1.x is unsupported: it can terminate webhook requests before a response is sent. On an incompatible version, this payment method is not registered and administrators see an upgrade notice. Upgrade CampTix before accepting new Mobile Money payments.
 
 = Requirements =
